@@ -4,19 +4,13 @@ import matplotlib.pyplot as plt
 import itertools
 
 
-def add(a, b):
-    return a + b
-
-
-def print_cookies():
-    print("hi")
-
-
 def parse_hmm_output(file_path):
     # create gene_hits
     gene_hits = {}
+
     with open(file_path, 'r') as file:
         output = file.readlines()
+
     for line in output:
         if line[0] == '#':
             continue
@@ -61,9 +55,9 @@ def overlap(range1, range2):
 
 
 def fetch_representative_hits(hits_dict_list,
-                                e_value_threshold,
-                                length_threshold,
-                                coverage_threshold):
+                              e_value_threshold,
+                              length_threshold,
+                              coverage_threshold):
     # First filtering ste
     filtered_hits = list(filter(lambda x: (x['ievalue'] < e_value_threshold
                                            and (x['hmm_coverage'] > coverage_threshold)),
@@ -81,5 +75,3 @@ def fetch_representative_hits(hits_dict_list,
 
 if __name__ == '__main__':
     file_path_ = 'GB_GCA_000008085.1_protein.txt'
-
-
