@@ -4,6 +4,76 @@ import matplotlib.pyplot as plt
 import itertools
 
 
+class EcodDomain:
+    """Class for working with ECOD domains."""
+
+    def __init__(self, ecod_line):
+        self.uid = ecod_line.split('\t')[0]
+        self.ecod_domain_id = ecod_line.split('\t')[1]
+        self.f_id = ecod_line.split('\t')[3]
+        self.pdb = ecod_line.split('\t')[4]
+        self.chain = ecod_line.split('\t')[5]
+        self.pdb_range = self.parse_ecod_range(ecod_line.split('\t')[6])
+        self.seqid_range = ecod_line.split('\t')[7]
+        self.arch_name = ecod_line.split('\t')[9]
+        self.x_name = ecod_line.split('\t')[10]
+        self.h_name = ecod_line.split('\t')[11]
+        self.t_name = ecod_line.split('\t')[12]
+        self.f_name = ecod_line.split('\t')[13]
+        self.asm_status = ecod_line.split('\t')[14]
+        self.ligand = ecod_line.split('\t')[15].replace('NO_LIGANDS_4A', '').split(',')
+
+    def __str__(self):
+        """Prints string with some useful information"""
+        return f"{self.ecod_domain_id}: {self.f_id} ({self.x_name}, {self.f_name})"
+
+    def __len__(self):
+        """Returns the length of the ECOD domain."""
+        pass
+
+    def __eq__(self, other):
+        """Compare to uid or ecod_domain_id with == operator."""
+        if type(other) == EcodDomain:
+            return self.uid == other.uid
+        elif other == self.uid or other == self.ecod_domain_id:
+            return True
+        else:
+            return False
+
+    def __ne__(self, other):
+        """Defines != operator; see __eq__."""
+        return not self.__eq__(other)
+
+    def __contains__(self, item):
+        """check ecod hierarchy with in operator"""
+        if item == self.f_id:
+            return True
+        elif self.f_id.startswith(item + '.'):
+            return True
+        else:
+            return False
+
+    def structure_path(self):
+        """
+        Return path to structure in ECOD structure F99 database.
+        Does not check if structure Exists.
+        """
+        return f""
+
+    def parse_ecod_range(self, ecod_range):
+        """Parse ECOD range."""
+        pass
+
+    def pymol_selector(self):
+        """Return PyMOL selection command for domain."""
+        return f"select {self.ecod_domain_id}, {self.pdb} and chain {self.chain} and resi"
+
+
+class HmmerHit:
+    """Class for working with HMMER hits"""
+    pass
+
+
 def parse_hmm_output(file_path):
     # create gene_hits
     gene_hits = {}
