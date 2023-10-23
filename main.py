@@ -3,8 +3,14 @@ import math
 import matplotlib.pyplot as plt
 import itertools
 
+
 def add(a, b):
     return a + b
+
+
+def print_cookies():
+    print("hi")
+
 
 def parse_hmm_output(file_path):
     # create gene_hits
