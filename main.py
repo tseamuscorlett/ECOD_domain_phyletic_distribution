@@ -5,7 +5,7 @@ import itertools
 
 
 class EcodDomain:
-    """Class for working with ECOD Domains"""
+    """Class for working with ECOD domains."""
 
     def __init__(self, ecod_line):
         self.uid = ecod_line.split('\t')[0]
@@ -24,14 +24,15 @@ class EcodDomain:
         self.ligand = ecod_line.split('\t')[15].replace('NO_LIGANDS_4A', '').split(',')
 
     def __str__(self):
+        """Prints string with some useful information"""
         return f"{self.ecod_domain_id}: {self.f_id} ({self.x_name}, {self.f_name})"
 
     def __len__(self):
-        """return the length of the ECOD domain"""
+        """Returns the length of the ECOD domain."""
         pass
 
     def __eq__(self, other):
-        """compare to uid or ecod_domain_id with == operator"""
+        """Compare to uid or ecod_domain_id with == operator."""
         if type(other) == EcodDomain:
             return self.uid == other.uid
         elif other == self.uid or other == self.ecod_domain_id:
@@ -40,6 +41,7 @@ class EcodDomain:
             return False
 
     def __ne__(self, other):
+        """Defines != operator; see __eq__."""
         return not self.__eq__(other)
 
     def __contains__(self, item):
@@ -52,13 +54,24 @@ class EcodDomain:
             return False
 
     def structure_path(self):
+        """
+        Return path to structure in ECOD structure F99 database.
+        Does not check if structure Exists.
+        """
         return f""
 
     def parse_ecod_range(self, ecod_range):
+        """Parse ECOD range."""
         pass
 
     def pymol_selector(self):
+        """Return PyMOL selection command for domain."""
         return f"select {self.ecod_domain_id}, {self.pdb} and chain {self.chain} and resi"
+
+
+class HmmerHit:
+    """Class for working with HMMER hits"""
+    pass
 
 
 def parse_hmm_output(file_path):
