@@ -7,7 +7,7 @@ import itertools
 def parse_hmm_output(file_path):
     # create gene_hits
     gene_hits = {}
-
+    # trolololololo
     with open(file_path, 'r') as file:
         output = file.readlines()
 
