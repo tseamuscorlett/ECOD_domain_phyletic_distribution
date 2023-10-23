@@ -3,6 +3,8 @@ import math
 import matplotlib.pyplot as plt
 import itertools
 
+def add(a, b):
+    return a + b
 
 def parse_hmm_output(file_path):
     # create gene_hits
