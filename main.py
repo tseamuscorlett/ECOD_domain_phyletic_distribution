@@ -2,6 +2,7 @@
 import math
 import matplotlib.pyplot as plt
 import itertools
+import portion as P
 
 
 class EcodDomain:
@@ -74,15 +75,15 @@ class HmmerHit:
     pass
 
 
-def parse_hmm_output(file_path):
-    # create gene_hits
+def parseHmm(file_path):
+    # create gene_hits dictionary
     gene_hits = {}
-    # trolololololo
+
     with open(file_path, 'r') as file:
         output = file.readlines()
 
     for line in output:
-        if line[0] == '#':
+        if line[0] == '#':  # skip the first lines
             continue
         hit = create_hmm_dictionary(line)
         if hit['gene_name'] not in gene_hits:
@@ -108,11 +109,12 @@ def create_hmm_dictionary(line):
 
 def overlap(range1, range2):
     '''
-    Return overlap between two ranges as integer.
+    Return overlap length between two ranges as integer.
+    Return 0 if no overlap.
     Assumes [start, end] order for both range1 and 2.
     '''
 
-    # Check that data satisfies expectation
+    # Check that [start, end] order is correct
     if range1[0] > range1[1] or range2[0] > range2[1]:
         return None
 
@@ -122,6 +124,14 @@ def overlap(range1, range2):
         return min_end - max_start + 1
     else:
         return 0
+
+def overlaP(range1, range2):
+    '''
+    Return True if two ranges overlap, False otherwise.
+    Uses portion package.
+    '''
+    return P.closed(range1[0], range1[1]).overlaps(P.closed(range2[0], range2[1]))
+
 
 
 def fetch_representative_hits(hits_dict_list,
