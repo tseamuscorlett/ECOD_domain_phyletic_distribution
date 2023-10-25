@@ -22,7 +22,8 @@ class EcodDomain:
         self.t_name = ecod_line.split('\t')[12]
         self.f_name = ecod_line.split('\t')[13]
         self.asm_status = ecod_line.split('\t')[14]
-        self.ligand = ecod_line.split('\t')[15].replace('NO_LIGANDS_4A', '').split(',')
+        self.ligand = ecod_line.split('\t')[15].replace('NO_LIGANDS_4A',
+                                                        '').split(',')
 
     def __str__(self):
         """Prints string with some useful information"""
@@ -31,6 +32,7 @@ class EcodDomain:
     def __len__(self):
         """Returns the length of the ECOD domain."""
         pass
+        # TODO: create __len__
 
     def __eq__(self, other):
         """Compare to uid or ecod_domain_id with == operator."""
@@ -60,10 +62,12 @@ class EcodDomain:
         Does not check if structure Exists.
         """
         return f""
+        # TODO: what is this?
 
     def parse_ecod_range(self, ecod_range):
         """Parse ECOD range."""
         pass
+        # TODO: (8) create parse_ecod_range
 
     def pymol_selector(self):
         """Return PyMOL selection command for domain."""
@@ -72,39 +76,56 @@ class EcodDomain:
 
 class HmmerHit:
     """Class for working with HMMER hits"""
-    pass
+
+    def __init__(self, hmm_line):
+        hmm_line = hmm_line.split()
+
+        self.hmm_name = hmm_line[3]
+        self.hmm_length = int(hmm_line[5])
+        self.hmm_coverage = (int(hmm_line[16]) - int(hmm_line[15]) + 1) / float(
+            hmm_line[5])
+        self.gene_name = hmm_line[0]
+        self.gene_length = hmm_line[2]
+        self.hmm_range = [int(hmm_line[15]), int(hmm_line[16])]
+        self.hit_range = [int(hmm_line[19]),
+                          int(hmm_line[20])]  # range of hit within gene
+        self.evalue = float(hmm_line[6])
+        self.ievalue = float(hmm_line[12])
+
+    def __str__(self):
+        """Prints string with some useful information"""
+        return (f"{self.hmm_name}: len: {self.hmm_length}, "
+                f"coverage: {self.hmm_coverage}, gene_name: {self.gene_name}, "
+                f"gene_len: {self.gene_length}, hmm_range: {self.hmm_range}, "
+                f"hit_range: {self.hit_range}, evalue: {self.evalue}, "
+                f"ievalue: {self.ievalue}")
+
+    def __eq__(self, other):
+        """Compare the hmm_names of self and other using == operator."""
+        if type(other) == HmmerHit:
+            return self.hmm_name == other.hmm_name
+        else:
+            return False
+
+    def __ne__(self, other):
+        """Defines != operator; see __eq__."""
+        return not self.__eq__(other)
 
 
 def parseHmm(file_path):
-    # create gene_hits dictionary
-    gene_hits = {}
-
     with open(file_path, 'r') as file:
         output = file.readlines()
+
+    gene_hits = {}
 
     for line in output:
         if line[0] == '#':  # skip the first lines
             continue
-        hit = create_hmm_dictionary(line)
+        hit = HmmerHit(line)
         if hit['gene_name'] not in gene_hits:
             gene_hits[hit['gene_name']] = [hit]
         else:
             gene_hits[hit['gene_name']].append(hit)
-
-
-def create_hmm_dictionary(line):
-    hmm_dict = {}
-    line = line.split()
-    hmm_dict['hmm_name'] = line[3]
-    hmm_dict['hmm_length'] = int(line[5])
-    hmm_dict['hmm_coverage'] = (int(line[16]) - int(line[15]) + 1) / float(line[5])
-    hmm_dict['gene_name'] = line[0]
-    hmm_dict['gene_length'] = line[2]
-    hmm_dict['hmm_range'] = [int(line[15]), int(line[16])]
-    hmm_dict['gene_range'] = [int(line[19]), int(line[20])]  # hit range, not glen
-    hmm_dict['evalue'] = float(line[6])
-    hmm_dict['ievalue'] = float(line[12])
-    return hmm_dict
 
 
 def overlap(range1, range2):
@@ -133,14 +154,15 @@ def overlaP(range1, range2):
     return P.closed(range1[0], range1[1]).overlaps(P.closed(range2[0], range2[1]))
 
 
-
+# TODO: (5) finish reconciliation function
 def fetch_representative_hits(hits_dict_list,
                               e_value_threshold,
                               length_threshold,
                               coverage_threshold):
     # First filtering ste
     filtered_hits = list(filter(lambda x: (x['ievalue'] < e_value_threshold
-                                           and (x['hmm_coverage'] > coverage_threshold)),
+                                           and (x[
+                                                    'hmm_coverage'] > coverage_threshold)),
                                 hits_dict_list))
 
     # Second filtering step
