@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 import itertools
 import portion as P
 
+if __name__ == '__main__':
+    file_path = 'data/GB_GCA_000008085.1_protein.txt'
+
 
 class EcodDomain:
     """Class for working with ECOD domains."""
@@ -113,6 +116,11 @@ class HmmerHit:
 
 
 def parseHmm(file_path):
+    """
+    Returns a dictionary of HmmerHits for each gene.
+    Takes the file path to the HMMER output file as input.
+    """
+
     with open(file_path, 'r') as file:
         output = file.readlines()
 
@@ -122,10 +130,11 @@ def parseHmm(file_path):
         if line[0] == '#':  # skip the first lines
             continue
         hit = HmmerHit(line)
-        if hit['gene_name'] not in gene_hits:
-            gene_hits[hit['gene_name']] = [hit]
+        if hit.gene_name not in gene_hits:
+            gene_hits[hit.gene_name] = [hit]
         else:
-            gene_hits[hit['gene_name']].append(hit)
+            gene_hits[hit.gene_name].append(hit)
+    return gene_hits
 
 
 def overlap(range1, range2):
@@ -175,5 +184,16 @@ def fetch_representative_hits(hits_dict_list,
     #             accepted_hits.append(hit)
 
 
-if __name__ == '__main__':
-    file_path_ = 'GB_GCA_000008085.1_protein.txt'
+
+
+gene_hits = parseHmm(file_path)
+# for gene, hits in gene_hits.items():
+#     print(f'{gene}: {hits}')
+
+for hit in gene_hits['AE017199.1_291']:
+    print(hit.hmm_name)
+
+for genes, hits in gene_hits.items():
+    print(f'<<{genes}>>')
+    for hit in hits:
+        print(hit)
