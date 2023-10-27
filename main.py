@@ -22,7 +22,8 @@ class EcodDomain:
         self.t_name = ecod_line.split('\t')[12]
         self.f_name = ecod_line.split('\t')[13]
         self.asm_status = ecod_line.split('\t')[14]
-        self.ligand = ecod_line.split('\t')[15].replace('NO_LIGANDS_4A', '').split(',')
+        self.ligand = ecod_line.split('\t')[15].replace('NO_LIGANDS_4A',
+                                                        '').split(',')
 
     def __str__(self):
         """Prints string with some useful information"""
@@ -97,40 +98,90 @@ def create_hmm_dictionary(line):
     line = line.split()
     hmm_dict['hmm_name'] = line[3]
     hmm_dict['hmm_length'] = int(line[5])
-    hmm_dict['hmm_coverage'] = (int(line[16]) - int(line[15]) + 1) / float(line[5])
+    hmm_dict['hmm_coverage'] = (int(line[16]) - int(line[15]) + 1) / float(
+        line[5])
     hmm_dict['gene_name'] = line[0]
     hmm_dict['gene_length'] = line[2]
     hmm_dict['hmm_range'] = [int(line[15]), int(line[16])]
-    hmm_dict['gene_range'] = [int(line[19]), int(line[20])]  # hit range, not glen
+    hmm_dict['gene_range'] = [int(line[19]),
+                              int(line[20])]  # hit range, not glen
     hmm_dict['evalue'] = float(line[6])
     hmm_dict['ievalue'] = float(line[12])
     return hmm_dict
 
 
-def overlap(range1, range2):
-    '''
+def overlapLength(range1, range2):
+    """
     Return overlap length between two ranges as integer.
     Return 0 if no overlap.
-    Assumes [start, end] order for both range1 and 2.
-    '''
+    Return None if ranges are not in [start, end] order.
 
+    Uses portion package.
+    P.closed(0, 2) & P.closed(1, 3)
+    [1,2]
+    P.closed(0, 2) & P.closed(2, 3)
+    [2]
+    P.closed(0, 2) & P.closed(3, 4)
+    ()
+    """
     # Check that [start, end] order is correct
     if range1[0] > range1[1] or range2[0] > range2[1]:
         return None
 
-    max_start = max(range1[0], range2[0])
-    min_end = min(range1[1], range2[1])
-    if max_start <= min_end:
-        return min_end - max_start + 1
-    else:
+    # return 0 if no overlap
+    if not overlapBool(range1, range2):
         return 0
 
-def overlaP(range1, range2):
-    '''
+    overlap_range = overlapRange(range1, range2)
+    if overlap_range[0] == overlap_range[1]:  # overlap by one
+        return 1
+    else:
+        return overlap_range[1] - overlap_range[0] + 1
+
+
+def overlapBool(range1, range2):
+    """
     Return True if two ranges overlap, False otherwise.
+    Return None if ranges are not in [start, end] order.
+
     Uses portion package.
-    '''
-    return P.closed(range1[0], range1[1]).overlaps(P.closed(range2[0], range2[1]))
+    P.closed(1, 2).overlaps(P.closed(2, 3))
+    True
+    P.closed(1, 2).overlaps(P.open(2, 3))
+    False
+    """
+    # Check that [start, end] order is correct
+    if range1[0] > range1[1] or range2[0] > range2[1]:
+        return None
+
+    return P.closed(range1[0], range1[1]).overlaps(
+        P.closed(range2[0], range2[1]))
+
+
+def overlapRange(range1, range2):
+    """
+    Return a list [overlap_start, overlap_end] if two ranges overlap
+    Return an empty list [] if no overlap.
+    Return None if ranges are not in [start, end] order.
+
+    Uses portion package:
+    P.closed(0, 2) & P.closed(1, 3)
+    [1,2]
+    P.closed(0, 2) & P.closed(2, 3)
+    [2]
+    P.closed(0, 2) & P.closed(3, 4)
+    ()
+    """
+    # Check that [start, end] order is correct
+    if range1[0] > range1[1] or range2[0] > range2[1]:
+        return None
+
+    # return [] if no overlap
+    if not overlapBool(range1, range2):
+        return []
+    else:
+        overlap_range = P.closed(range1[0], range1[1]) & P.closed(range2[0], range2[1])
+        return [overlap_range.lower, overlap_range.upper]
 
 
 
@@ -140,7 +191,8 @@ def fetch_representative_hits(hits_dict_list,
                               coverage_threshold):
     # First filtering ste
     filtered_hits = list(filter(lambda x: (x['ievalue'] < e_value_threshold
-                                           and (x['hmm_coverage'] > coverage_threshold)),
+                                           and (x[
+                                                    'hmm_coverage'] > coverage_threshold)),
                                 hits_dict_list))
 
     # Second filtering step
