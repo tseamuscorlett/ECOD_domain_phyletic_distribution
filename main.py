@@ -225,7 +225,7 @@ def overlapLength2(p1, p2):
 
 
 # TODO: (5) finish reconciliation function
-def fetch_representative_hits(hits_dict_list,
+def fetch_representative_hits(hmm_hits_list,
                               e_value_threshold,
                               coverage_threshold):
 
@@ -281,7 +281,7 @@ for hit in hits_to_reconcile:
     reconcile.append(hit.hmm_name)
 print(f'To reconcile: {reconcile}')
 
-reconcile_overlap_hits(hits_to_reconcile, 1e-5, 0.6)
+fetch_representative_hits(hits_to_reconcile, 1e-5, 0.6)
 
 
 
