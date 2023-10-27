@@ -85,15 +85,14 @@ class HmmerHit:
 
         self.hmm_name = hmm_line[3]
         self.hmm_length = int(hmm_line[5])
-        self.hmm_coverage = (int(hmm_line[16]) - int(hmm_line[15]) + 1) / float(
-            hmm_line[5])
+        self.hmm_coverage = (int(hmm_line[16]) - int(hmm_line[15]) + 1) / float(hmm_line[5]) # Cannot be a range of 0
         self.gene_name = hmm_line[0]
         self.gene_length = hmm_line[2]
-        self.hmm_range = [int(hmm_line[15]), int(hmm_line[16])]
-        self.hit_range = [int(hmm_line[19]),
-                          int(hmm_line[20])]  # range of hit within gene
+        self.hmm_range = [int(hmm_line[15]), int(hmm_line[16])]  # Cannot be len 0, protion object
+        self.hit_range = [int(hmm_line[19]), int(hmm_line[20])]  # Envelope coordinates; portion object
         self.evalue = float(hmm_line[6])
         self.ievalue = float(hmm_line[12])
+        self.cevalue = float(hmm_line[11]) # double check
 
     def __str__(self):
         """Prints string with some useful information"""
@@ -108,7 +107,7 @@ class HmmerHit:
         if type(other) == HmmerHit:
             return self.hmm_name == other.hmm_name
         else:
-            return False
+            raise None # be careful about combining cross-class and != within class results
 
     def __ne__(self, other):
         """Defines != operator; see __eq__."""
@@ -133,7 +132,8 @@ def parseHmm(file_path):
         if hit.gene_name not in gene_hits:
             gene_hits[hit.gene_name] = [hit]
         else:
-            gene_hits[hit['gene_name']].append(hit)
+            gene_hits[hit['gene_name']].append(hit) # check for return function
+
 
 def overlapLength(range1, range2):
     """
@@ -209,6 +209,19 @@ def overlapRange(range1, range2):
         return [overlap_range.lower, overlap_range.upper]
 
 
+def overlapRange2(po1, po2):
+    return po1 & po2
+
+def overlapLength2(p1, p2):
+    """This function takes two portion objects"""
+
+    z = p1 & p2
+    if z.empty:
+        return 0
+    else:
+        return z.upper - z.lower + 1
+
+
 # TODO: (5) finish reconciliation function
 def fetch_representative_hits(hits_dict_list,
                               e_value_threshold,
@@ -228,8 +241,6 @@ def fetch_representative_hits(hits_dict_list,
     #         if overlap(ahit[1:], hit[
     #                              1:]) == 0:  # We will use something less stringent in final script
     #             accepted_hits.append(hit)
-
-
 
 
 gene_hits = parseHmm(file_path)
