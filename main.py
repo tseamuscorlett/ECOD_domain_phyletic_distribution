@@ -88,8 +88,8 @@ class HmmerHit:
         self.hmm_coverage = (int(hmm_line[16]) - int(hmm_line[15]) + 1) / float(hmm_line[5]) # Cannot be a range of 0
         self.gene_name = hmm_line[0]
         self.gene_length = hmm_line[2]
-        self.hmm_range = [int(hmm_line[15]), int(hmm_line[16])]  # Cannot be len 0, protion object
-        self.hit_range = [int(hmm_line[19]), int(hmm_line[20])]  # Envelope coordinates; portion object
+        self.hmm_range = P.closed(int(hmm_line[15]), int(hmm_line[16]))  # Cannot be len 0, portion object Interval
+        self.hit_range = P.closed(int(hmm_line[19]), int(hmm_line[20]))  # Envelope coordinates; portion object Inteval
         self.evalue = float(hmm_line[6])
         self.ievalue = float(hmm_line[12])
         self.cevalue = float(hmm_line[11]) # double check
@@ -136,103 +136,42 @@ def parseHmm(file_path):
     return gene_hits
 
 
-
-def overlapLength(range1, range2):
+def overlapLength(po1, po2):
     """
-    Return overlap length between two ranges as integer.
-    Return 0 if no overlap.
-    Return None if ranges are not in [start, end] order.
-
-    Uses portion package.
-    P.closed(0, 2) & P.closed(1, 3)
-    [1,2]
-    P.closed(0, 2) & P.closed(2, 3)
-    [2]
-    P.closed(0, 2) & P.closed(3, 4)
-    ()
+    Takes two portion Intervals
+    Returns the length of the overlap as integer
     """
-    # Check that [start, end] order is correct
-    if range1[0] > range1[1] or range2[0] > range2[1]:
-        return None
-
-    # return 0 if no overlap
-    if not overlapBool(range1, range2):
-        return 0
-
-    overlap_range = overlapRange(range1, range2)
-    if overlap_range[0] == overlap_range[1]:  # overlap by one
-        return 1
-    else:
-        return overlap_range[1] - overlap_range[0] + 1
-
-
-def overlapBool(range1, range2):
-    """
-    Return True if two ranges overlap, False otherwise.
-    Return None if ranges are not in [start, end] order.
-
-    Uses portion package.
-    P.closed(1, 2).overlaps(P.closed(2, 3))
-    True
-    P.closed(1, 2).overlaps(P.open(2, 3))
-    False
-    """
-    # Check that [start, end] order is correct
-    if range1[0] > range1[1] or range2[0] > range2[1]:
-        return None
-
-    return P.closed(range1[0], range1[1]).overlaps(
-        P.closed(range2[0], range2[1]))
-
-
-def overlapRange(range1, range2):
-    """
-    Return a list [overlap_start, overlap_end] if two ranges overlap
-    Return an empty list [] if no overlap.
-    Return None if ranges are not in [start, end] order.
-
-    Uses portion package:
-    P.closed(0, 2) & P.closed(1, 3)
-    [1,2]
-    P.closed(0, 2) & P.closed(2, 3)
-    [2]
-    P.closed(0, 2) & P.closed(3, 4)
-    ()
-    """
-    # Check that [start, end] order is correct
-    if range1[0] > range1[1] or range2[0] > range2[1]:
-        return None
-
-    # return [] if no overlap
-    if not overlapBool(range1, range2):
-        return []
-    else:
-        overlap_range = P.closed(range1[0], range1[1]) & P.closed(range2[0], range2[1])
-        return [overlap_range.lower, overlap_range.upper]
-
-
-def overlapRange2(po1, po2):
-    return po1 & po2
-
-def overlapLength2(p1, p2):
-    """This function takes two portion objects"""
-
-    z = p1 & p2
+    z = po1 & po2
     if z.empty:
         return 0
     else:
         return z.upper - z.lower + 1
 
 
-# TODO: (5) finish reconciliation function
+def overlapBool(po1, po2):
+    """
+    Takes two portion Intervals
+    Returns True if they overlap, False if they don't
+    A function for when you don't want to use the built-in ".overlaps" operator
+    """
+    return po1.overlaps(po2)
+
+
+def overlapRange(po1, po2):
+    """
+    Takes two portion Intervals
+    Returns the overlap as a portion Interval
+    A function for when you don't want to use the built-in "&" operator
+    """
+    return po1 & po2
+
+
 def fetch_representative_hits(hmm_hits_list,
                               e_value_threshold,
                               coverage_threshold):
-
     """
     docstring
     """
-
 
     # Filtering step
     filtered_hits = list(filter(lambda x: (x.ievalue < e_value_threshold
@@ -256,7 +195,9 @@ def fetch_representative_hits(hmm_hits_list,
     for hit in filtered_hits[1:]:
         overlap_c = 0
         for ahit in accepted_hits:
-            if overlapLength(ahit.hit_range, hit.hit_range) != 0:  # We will use something less stringent in final script
+            # TODO: (5) use something less stringent;
+            #  allow <25% overlap; if >25% for 1 OR >25% for 2, remove hit with worse evalue
+            if overlapLength(ahit.hit_range, hit.hit_range) != 0:
                 overlap_c += 1
         if overlap_c == 0:
             accepted_hits.append(hit)
@@ -273,15 +214,15 @@ def fetch_representative_hits(hmm_hits_list,
 """
 # Testing overlap reconciliation algorithm
 """
-gene_hits = parseHmm(file_path)
-hits_to_reconcile = gene_hits['AE017199.1_291']
-
-reconcile = []
-for hit in hits_to_reconcile:
-    reconcile.append(hit.hmm_name)
-print(f'To reconcile: {reconcile}')
-
-fetch_representative_hits(hits_to_reconcile, 1e-5, 0.6)
+# gene_hits = parseHmm(file_path)
+# hits_to_reconcile = gene_hits['AE017199.1_291']
+#
+# reconcile = []
+# for hit in hits_to_reconcile:
+#     reconcile.append(hit.hmm_name)
+# print(f'To reconcile: {reconcile}')
+#
+# fetch_representative_hits(hits_to_reconcile, 1e-5, 0.6)
 
 
 
