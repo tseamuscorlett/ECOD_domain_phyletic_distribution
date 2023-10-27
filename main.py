@@ -133,34 +133,80 @@ def parseHmm(file_path):
         if hit.gene_name not in gene_hits:
             gene_hits[hit.gene_name] = [hit]
         else:
-            gene_hits[hit.gene_name].append(hit)
-    return gene_hits
+            gene_hits[hit['gene_name']].append(hit)
 
-
-def overlap(range1, range2):
-    '''
+def overlapLength(range1, range2):
+    """
     Return overlap length between two ranges as integer.
     Return 0 if no overlap.
-    Assumes [start, end] order for both range1 and 2.
-    '''
+    Return None if ranges are not in [start, end] order.
 
+    Uses portion package.
+    P.closed(0, 2) & P.closed(1, 3)
+    [1,2]
+    P.closed(0, 2) & P.closed(2, 3)
+    [2]
+    P.closed(0, 2) & P.closed(3, 4)
+    ()
+    """
     # Check that [start, end] order is correct
     if range1[0] > range1[1] or range2[0] > range2[1]:
         return None
 
-    max_start = max(range1[0], range2[0])
-    min_end = min(range1[1], range2[1])
-    if max_start <= min_end:
-        return min_end - max_start + 1
-    else:
+    # return 0 if no overlap
+    if not overlapBool(range1, range2):
         return 0
 
-def overlaP(range1, range2):
-    '''
+    overlap_range = overlapRange(range1, range2)
+    if overlap_range[0] == overlap_range[1]:  # overlap by one
+        return 1
+    else:
+        return overlap_range[1] - overlap_range[0] + 1
+
+
+def overlapBool(range1, range2):
+    """
     Return True if two ranges overlap, False otherwise.
+    Return None if ranges are not in [start, end] order.
+
     Uses portion package.
-    '''
-    return P.closed(range1[0], range1[1]).overlaps(P.closed(range2[0], range2[1]))
+    P.closed(1, 2).overlaps(P.closed(2, 3))
+    True
+    P.closed(1, 2).overlaps(P.open(2, 3))
+    False
+    """
+    # Check that [start, end] order is correct
+    if range1[0] > range1[1] or range2[0] > range2[1]:
+        return None
+
+    return P.closed(range1[0], range1[1]).overlaps(
+        P.closed(range2[0], range2[1]))
+
+
+def overlapRange(range1, range2):
+    """
+    Return a list [overlap_start, overlap_end] if two ranges overlap
+    Return an empty list [] if no overlap.
+    Return None if ranges are not in [start, end] order.
+
+    Uses portion package:
+    P.closed(0, 2) & P.closed(1, 3)
+    [1,2]
+    P.closed(0, 2) & P.closed(2, 3)
+    [2]
+    P.closed(0, 2) & P.closed(3, 4)
+    ()
+    """
+    # Check that [start, end] order is correct
+    if range1[0] > range1[1] or range2[0] > range2[1]:
+        return None
+
+    # return [] if no overlap
+    if not overlapBool(range1, range2):
+        return []
+    else:
+        overlap_range = P.closed(range1[0], range1[1]) & P.closed(range2[0], range2[1])
+        return [overlap_range.lower, overlap_range.upper]
 
 
 # TODO: (5) finish reconciliation function
