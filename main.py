@@ -132,7 +132,9 @@ def parseHmm(file_path):
         if hit.gene_name not in gene_hits:
             gene_hits[hit.gene_name] = [hit]
         else:
-            gene_hits[hit['gene_name']].append(hit) # check for return function
+            gene_hits[hit.gene_name].append(hit)
+    return gene_hits
+
 
 
 def overlapLength(range1, range2):
@@ -225,32 +227,76 @@ def overlapLength2(p1, p2):
 # TODO: (5) finish reconciliation function
 def fetch_representative_hits(hits_dict_list,
                               e_value_threshold,
-                              length_threshold,
                               coverage_threshold):
-    # First filtering ste
-    filtered_hits = list(filter(lambda x: (x['ievalue'] < e_value_threshold
-                                           and (x[
-                                                    'hmm_coverage'] > coverage_threshold)),
-                                hits_dict_list))
 
-    # Second filtering step
-    # .sort(key=lambda x: (x[0], -(x[-1] - x[-2])))
-    # accepted_hits = [hits_list_copy[0]]
-    # for hit in hits_list_copy[1:]:
-    #     for ahit in accepted_hits:
-    #         if overlap(ahit[1:], hit[
-    #                              1:]) == 0:  # We will use something less stringent in final script
-    #             accepted_hits.append(hit)
+    """
+    docstring
+    """
 
 
+    # Filtering step
+    filtered_hits = list(filter(lambda x: (x.ievalue < e_value_threshold
+                                           and (x.hmm_coverage > coverage_threshold)),
+                                hmm_hits_list))
+
+    # print to check
+    filtered = []
+    for hit in filtered_hits:
+        filtered.append(hit.hmm_name)
+    print(f'Filtered: {filtered}')
+
+    # Sort by i-evalue
+    filtered_hits.sort(key=lambda x: x.ievalue)
+    accepted_hits = [filtered_hits[0]]
+
+    # print to check
+    print(f'first_accepted_hit: {accepted_hits[0].hmm_name}')
+
+    # Reconciliation step
+    for hit in filtered_hits[1:]:
+        overlap_c = 0
+        for ahit in accepted_hits:
+            if overlapLength(ahit.hit_range, hit.hit_range) != 0:  # We will use something less stringent in final script
+                overlap_c += 1
+        if overlap_c == 0:
+            accepted_hits.append(hit)
+
+    # print to check
+    accepted = []
+    for hit in accepted_hits:
+        accepted.append(hit.hmm_name)
+    print(f'accepted_hits: {accepted}')
+
+
+
+
+"""
+# Testing overlap reconciliation algorithm
+"""
 gene_hits = parseHmm(file_path)
+hits_to_reconcile = gene_hits['AE017199.1_291']
+
+reconcile = []
+for hit in hits_to_reconcile:
+    reconcile.append(hit.hmm_name)
+print(f'To reconcile: {reconcile}')
+
+reconcile_overlap_hits(hits_to_reconcile, 1e-5, 0.6)
+
+
+
+"""
+# Testing print statements
+"""
+
+# gene_hits = parseHmm(file_path)
 # for gene, hits in gene_hits.items():
 #     print(f'{gene}: {hits}')
 
-for hit in gene_hits['AE017199.1_291']:
-    print(hit.hmm_name)
-
-for genes, hits in gene_hits.items():
-    print(f'<<{genes}>>')
-    for hit in hits:
-        print(hit)
+# for hit in gene_hits['AE017199.1_291']:
+#     print(hit.hmm_name)
+#
+# for genes, hits in gene_hits.items():
+#     print(f'<<{genes}>>')
+#     for hit in hits:
+#         print(hit)
