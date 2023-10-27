@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 import itertools
 import portion as P
 
+if __name__ == '__main__':
+    file_path = 'data/GB_GCA_000008085.1_protein.txt'
+
 
 class EcodDomain:
     """Class for working with ECOD domains."""
@@ -22,7 +25,8 @@ class EcodDomain:
         self.t_name = ecod_line.split('\t')[12]
         self.f_name = ecod_line.split('\t')[13]
         self.asm_status = ecod_line.split('\t')[14]
-        self.ligand = ecod_line.split('\t')[15].replace('NO_LIGANDS_4A', '').split(',')
+        self.ligand = ecod_line.split('\t')[15].replace('NO_LIGANDS_4A',
+                                                        '').split(',')
 
     def __str__(self):
         """Prints string with some useful information"""
@@ -31,6 +35,7 @@ class EcodDomain:
     def __len__(self):
         """Returns the length of the ECOD domain."""
         pass
+        # TODO: create __len__
 
     def __eq__(self, other):
         """Compare to uid or ecod_domain_id with == operator."""
@@ -60,10 +65,12 @@ class EcodDomain:
         Does not check if structure Exists.
         """
         return f""
+        # TODO: what is this?
 
     def parse_ecod_range(self, ecod_range):
         """Parse ECOD range."""
         pass
+        # TODO: (8) create parse_ecod_range
 
     def pymol_selector(self):
         """Return PyMOL selection command for domain."""
@@ -72,86 +79,209 @@ class EcodDomain:
 
 class HmmerHit:
     """Class for working with HMMER hits"""
-    pass
+
+    def __init__(self, hmm_line):
+        hmm_line = hmm_line.split()
+
+        self.hmm_name = hmm_line[3]
+        self.hmm_length = int(hmm_line[5])
+        self.hmm_coverage = (int(hmm_line[16]) - int(hmm_line[15]) + 1) / float(
+            hmm_line[5])
+        self.gene_name = hmm_line[0]
+        self.gene_length = hmm_line[2]
+        self.hmm_range = [int(hmm_line[15]), int(hmm_line[16])]
+        self.hit_range = [int(hmm_line[19]),
+                          int(hmm_line[20])]  # range of hit within gene
+        self.evalue = float(hmm_line[6])
+        self.ievalue = float(hmm_line[12])
+
+    def __str__(self):
+        """Prints string with some useful information"""
+        return (f"{self.hmm_name}: len: {self.hmm_length}, "
+                f"coverage: {self.hmm_coverage}, gene_name: {self.gene_name}, "
+                f"gene_len: {self.gene_length}, hmm_range: {self.hmm_range}, "
+                f"hit_range: {self.hit_range}, evalue: {self.evalue}, "
+                f"ievalue: {self.ievalue}")
+
+    def __eq__(self, other):
+        """Compare the hmm_names of self and other using == operator."""
+        if type(other) == HmmerHit:
+            return self.hmm_name == other.hmm_name
+        else:
+            return False
+
+    def __ne__(self, other):
+        """Defines != operator; see __eq__."""
+        return not self.__eq__(other)
 
 
 def parseHmm(file_path):
-    # create gene_hits dictionary
-    gene_hits = {}
+    """
+    Returns a dictionary of HmmerHits for each gene.
+    Takes the file path to the HMMER output file as input.
+    """
 
     with open(file_path, 'r') as file:
         output = file.readlines()
 
+    gene_hits = {}
+
     for line in output:
         if line[0] == '#':  # skip the first lines
             continue
-        hit = create_hmm_dictionary(line)
-        if hit['gene_name'] not in gene_hits:
-            gene_hits[hit['gene_name']] = [hit]
+        hit = HmmerHit(line)
+        if hit.gene_name not in gene_hits:
+            gene_hits[hit.gene_name] = [hit]
         else:
-            gene_hits[hit['gene_name']].append(hit)
+            gene_hits[hit.gene_name].append(hit)
+    return gene_hits
 
 
-def create_hmm_dictionary(line):
-    hmm_dict = {}
-    line = line.split()
-    hmm_dict['hmm_name'] = line[3]
-    hmm_dict['hmm_length'] = int(line[5])
-    hmm_dict['hmm_coverage'] = (int(line[16]) - int(line[15]) + 1) / float(line[5])
-    hmm_dict['gene_name'] = line[0]
-    hmm_dict['gene_length'] = line[2]
-    hmm_dict['hmm_range'] = [int(line[15]), int(line[16])]
-    hmm_dict['gene_range'] = [int(line[19]), int(line[20])]  # hit range, not glen
-    hmm_dict['evalue'] = float(line[6])
-    hmm_dict['ievalue'] = float(line[12])
-    return hmm_dict
-
-
-def overlap(range1, range2):
-    '''
+def overlapLength(range1, range2):
+    """
     Return overlap length between two ranges as integer.
     Return 0 if no overlap.
-    Assumes [start, end] order for both range1 and 2.
-    '''
+    Return None if ranges are not in [start, end] order.
 
+    Uses portion package.
+    P.closed(0, 2) & P.closed(1, 3)
+    [1,2]
+    P.closed(0, 2) & P.closed(2, 3)
+    [2]
+    P.closed(0, 2) & P.closed(3, 4)
+    ()
+    """
     # Check that [start, end] order is correct
     if range1[0] > range1[1] or range2[0] > range2[1]:
         return None
 
-    max_start = max(range1[0], range2[0])
-    min_end = min(range1[1], range2[1])
-    if max_start <= min_end:
-        return min_end - max_start + 1
-    else:
+    # return 0 if no overlap
+    if not overlapBool(range1, range2):
         return 0
 
-def overlaP(range1, range2):
-    '''
+    overlap_range = overlapRange(range1, range2)
+    if overlap_range[0] == overlap_range[1]:  # overlap by one
+        return 1
+    else:
+        return overlap_range[1] - overlap_range[0] + 1
+
+
+def overlapBool(range1, range2):
+    """
     Return True if two ranges overlap, False otherwise.
+    Return None if ranges are not in [start, end] order.
+
     Uses portion package.
-    '''
-    return P.closed(range1[0], range1[1]).overlaps(P.closed(range2[0], range2[1]))
+    P.closed(1, 2).overlaps(P.closed(2, 3))
+    True
+    P.closed(1, 2).overlaps(P.open(2, 3))
+    False
+    """
+    # Check that [start, end] order is correct
+    if range1[0] > range1[1] or range2[0] > range2[1]:
+        return None
+
+    return P.closed(range1[0], range1[1]).overlaps(
+        P.closed(range2[0], range2[1]))
 
 
+def overlapRange(range1, range2):
+    """
+    Return a list [overlap_start, overlap_end] if two ranges overlap
+    Return an empty list [] if no overlap.
+    Return None if ranges are not in [start, end] order.
 
-def fetch_representative_hits(hits_dict_list,
+    Uses portion package:
+    P.closed(0, 2) & P.closed(1, 3)
+    [1,2]
+    P.closed(0, 2) & P.closed(2, 3)
+    [2]
+    P.closed(0, 2) & P.closed(3, 4)
+    ()
+    """
+    # Check that [start, end] order is correct
+    if range1[0] > range1[1] or range2[0] > range2[1]:
+        return None
+
+    # return [] if no overlap
+    if not overlapBool(range1, range2):
+        return []
+    else:
+        overlap_range = P.closed(range1[0], range1[1]) & P.closed(range2[0], range2[1])
+        return [overlap_range.lower, overlap_range.upper]
+
+
+# TODO: (5) finish reconciliation function
+def reconcile_overlap_hits(hmm_hits_list,
                               e_value_threshold,
-                              length_threshold,
                               coverage_threshold):
-    # First filtering ste
-    filtered_hits = list(filter(lambda x: (x['ievalue'] < e_value_threshold
-                                           and (x['hmm_coverage'] > coverage_threshold)),
-                                hits_dict_list))
+    """
+    docstring
+    """
 
-    # Second filtering step
-    # .sort(key=lambda x: (x[0], -(x[-1] - x[-2])))
-    # accepted_hits = [hits_list_copy[0]]
-    # for hit in hits_list_copy[1:]:
-    #     for ahit in accepted_hits:
-    #         if overlap(ahit[1:], hit[
-    #                              1:]) == 0:  # We will use something less stringent in final script
-    #             accepted_hits.append(hit)
+    # Filtering step
+    filtered_hits = list(filter(lambda x: (x.ievalue < e_value_threshold
+                                           and (x.hmm_coverage > coverage_threshold)),
+                                hmm_hits_list))
+
+    # print to check
+    filtered = []
+    for hit in filtered_hits:
+        filtered.append(hit.hmm_name)
+    print(f'Filtered: {filtered}')
+
+    # Sort by i-evalue
+    filtered_hits.sort(key=lambda x: x.ievalue)
+    accepted_hits = [filtered_hits[0]]
+
+    # print to check
+    print(f'first_accepted_hit: {accepted_hits[0].hmm_name}')
+
+    # Reconciliation step
+    for hit in filtered_hits[1:]:
+        overlap_c = 0
+        for ahit in accepted_hits:
+            if overlapLength(ahit.hit_range, hit.hit_range) != 0:  # We will use something less stringent in final script
+                overlap_c += 1
+        if overlap_c == 0:
+            accepted_hits.append(hit)
+
+    # print to check
+    accepted = []
+    for hit in accepted_hits:
+        accepted.append(hit.hmm_name)
+    print(f'accepted_hits: {accepted}')
 
 
-if __name__ == '__main__':
-    file_path_ = 'GB_GCA_000008085.1_protein.txt'
+
+
+"""
+# Testing overlap reconciliation algorithm
+"""
+gene_hits = parseHmm(file_path)
+hits_to_reconcile = gene_hits['AE017199.1_291']
+
+reconcile = []
+for hit in hits_to_reconcile:
+    reconcile.append(hit.hmm_name)
+print(f'To reconcile: {reconcile}')
+
+reconcile_overlap_hits(hits_to_reconcile, 1e-5, 0.6)
+
+
+
+"""
+# Testing print statements
+"""
+
+# gene_hits = parseHmm(file_path)
+# for gene, hits in gene_hits.items():
+#     print(f'{gene}: {hits}')
+
+# for hit in gene_hits['AE017199.1_291']:
+#     print(hit.hmm_name)
+#
+# for genes, hits in gene_hits.items():
+#     print(f'<<{genes}>>')
+#     for hit in hits:
+#         print(hit)
