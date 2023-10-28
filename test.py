@@ -3,6 +3,7 @@ import unittest
 from main import overlapBool
 from main import overlapLength
 from main import overlapRange
+from main import overlapPercentage
 import portion as P
 
 
@@ -65,6 +66,32 @@ class OverlapRangeTest(unittest.TestCase):
         test_range = overlapRange(P.closed(1, 1), P.closed(1, 20))
         self.assertEqual(test_range.lower, 1)
         self.assertEqual(test_range.upper, 1)
+
+
+class OverlapPercentageTest(unittest.TestCase):
+    def test_no_overlap(self) -> None:
+        test_percentage = overlapPercentage(P.closed(1, 50), P.closed(51, 300))
+        self.assertEqual(test_percentage, [0, 0])
+
+    def test_partial_overlap(self) -> None:
+        test_percentage = overlapPercentage(P.closed(1, 10), P.closed(5, 20))
+        self.assertEqual(test_percentage, [0.6, 0.375])
+
+    def test_partial_overlap_by_one(self) -> None:
+        test_percentage = overlapPercentage(P.closed(1, 5), P.closed(5, 20))
+        self.assertEqual(test_percentage, [0.2, 0.0625])
+
+    def test_nested_overlap(self) -> None:
+        test_percentage = overlapPercentage(P.closed(1, 20), P.closed(5, 10))
+        self.assertEqual(test_percentage, [0.3, 1.0])
+
+    def test_complete_overlap(self) -> None:
+        test_percentage = overlapPercentage(P.closed(1, 5), P.closed(1, 5))
+        self.assertEqual(test_percentage, [1.0, 1.0])
+
+    def test_one_overlap(self) -> None:
+        test_percentage = overlapPercentage(P.closed(1, 1), P.closed(1, 20))
+        self.assertEqual(test_percentage, [1.0, 0.05])
 
 
 if __name__ == '__main__':

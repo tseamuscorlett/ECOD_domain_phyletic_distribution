@@ -166,6 +166,19 @@ def overlapRange(po1, po2):
     return po1 & po2
 
 
+def overlapPercentage(po1, po2):
+    """
+    Takes two portion Intervals
+    Returns the percentages for the two overlap as [float, float]
+    """
+    z = po1 & po2
+    if z.empty:
+        return [0, 0]
+    else:
+        overlap_len = z.upper - z.lower + 1
+        return [float(overlap_len/(po1.upper - po1.lower + 1)), float(overlap_len/(po2.upper - po2.lower + 1))]
+
+
 def fetch_representative_hits(hmm_hits_list,
                               e_value_threshold,
                               coverage_threshold):
@@ -195,10 +208,10 @@ def fetch_representative_hits(hmm_hits_list,
     for hit in filtered_hits[1:]:
         overlap_c = 0
         for ahit in accepted_hits:
-            # TODO: (5) use something less stringent;
-            #  allow <25% overlap; if >25% for 1 OR >25% for 2, remove hit with worse evalue
             if overlapLength(ahit.hit_range, hit.hit_range) != 0:
-                overlap_c += 1
+                percentages = overlapPercentage(ahit.hit_range, hit.hit_range)
+                if percentages[0] >= 0.25 or percentages[1] >= 0.25:
+                    overlap_c += 1
         if overlap_c == 0:
             accepted_hits.append(hit)
 
