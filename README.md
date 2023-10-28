@@ -1,1 +1,1 @@
-# testRepoTSC
+# protein_properties
