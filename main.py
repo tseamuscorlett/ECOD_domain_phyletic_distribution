@@ -183,7 +183,10 @@ def fetch_representative_hits(hmm_hits_list,
                               e_value_threshold,
                               coverage_threshold):
     """
-    docstring
+    Takes a list of hmm_hits of class HmmerHit
+    Returns a list of accepted HMM hits above the custom e_value_threshold,
+    coverage_threshold, and no overlap more than 25% between each hit
+    Returns None if all hits get rejected by the thresholds
     """
 
     # Filtering step
@@ -191,18 +194,12 @@ def fetch_representative_hits(hmm_hits_list,
                                            and (x.hmm_coverage > coverage_threshold)),
                                 hmm_hits_list))
 
-    # print to check
-    filtered = []
-    for hit in filtered_hits:
-        filtered.append(hit.hmm_name)
-    print(f'Filtered: {filtered}')
-
     # Sort by i-evalue
     filtered_hits.sort(key=lambda x: x.ievalue)
-    accepted_hits = [filtered_hits[0]]
-
-    # print to check
-    print(f'first_accepted_hit: {accepted_hits[0].hmm_name}')
+    if len(filtered_hits) == 0:
+        return None
+    else:
+        accepted_hits = [filtered_hits[0]]
 
     # Reconciliation step
     for hit in filtered_hits[1:]:
@@ -215,28 +212,7 @@ def fetch_representative_hits(hmm_hits_list,
         if overlap_c == 0:
             accepted_hits.append(hit)
 
-    # print to check
-    accepted = []
-    for hit in accepted_hits:
-        accepted.append(hit.hmm_name)
-    print(f'accepted_hits: {accepted}')
-
-
-
-
-"""
-# Testing overlap reconciliation algorithm
-"""
-# gene_hits = parseHmm(file_path)
-# hits_to_reconcile = gene_hits['AE017199.1_291']
-#
-# reconcile = []
-# for hit in hits_to_reconcile:
-#     reconcile.append(hit.hmm_name)
-# print(f'To reconcile: {reconcile}')
-#
-# fetch_representative_hits(hits_to_reconcile, 1e-5, 0.6)
-
+    return accepted_hits
 
 
 """
@@ -254,3 +230,26 @@ def fetch_representative_hits(hmm_hits_list,
 #     print(f'<<{genes}>>')
 #     for hit in hits:
 #         print(hit)
+
+
+"""
+# Testing overlap reconciliation algorithm for one gene
+"""
+# gene_hits = parseHmm(file_path)
+# hits_to_reconcile = gene_hits['AE017199.1_291']
+#
+# reconcile = []
+# for hit in hits_to_reconcile:
+#     reconcile.append(hit.hmm_name)
+# print(f'To reconcile: {reconcile}')
+#
+# accepted = fetch_representative_hits(hits_to_reconcile, 1e-5, 0.6)
+# for hit in accepted:
+#     print(hit.hmm_name)
+
+"""
+# Testing overlap reconciliation algorithm for WHOLE GENOME
+"""
+gene_hits = parseHmm(file_path)
+for gene, hits in gene_hits.items():
+    print(fetch_representative_hits(hits, 1e-5, 0.6))
