@@ -286,9 +286,14 @@ def domainSearch(domain_name, accepted_hits):
                 return True
     return False
 
+# parse HMMER output
 gene_hits = parseHmm(file_path)
+
+# reconcile overlaps
 result = wholeGenomeOverlapRecon(gene_hits, 1e-5, 0.6)
 print(result)
+
+# search for domains
 print(domainSearch('MCM_AAA', result))
 print(domainSearch('fake_domain_name', result))
 
