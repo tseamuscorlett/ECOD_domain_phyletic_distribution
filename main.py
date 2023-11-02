@@ -220,9 +220,11 @@ def fetch_representative_hits(hmm_hits_list,
 """
 
 # gene_hits = parseHmm(file_path)
+# domain_lengths = []
+# hmm_lengths = []
 # for gene, hits in gene_hits.items():
 #     print(f'{gene}: {hits}')
-
+#
 # for hit in gene_hits['AE017199.1_291']:
 #     print(hit.hmm_name)
 #
@@ -230,7 +232,11 @@ def fetch_representative_hits(hmm_hits_list,
 #     print(f'<<{genes}>>')
 #     for hit in hits:
 #         print(hit)
-
+#         domain_lengths.append(hit.hit_range.upper - hit.hit_range.lower + 1)
+#         hmm_lengths.append(hit.hmm_length)
+# print(sum(domain_lengths)/len(domain_lengths))  # 103.3272921108742
+# print(sum(hmm_lengths)/len(hmm_lengths))  # 163.89339019189765
+# print(len(gene_hits))  # 382
 
 """
 # Testing overlap reconciliation algorithm for one gene
@@ -248,8 +254,42 @@ def fetch_representative_hits(hmm_hits_list,
 #     print(hit.hmm_name)
 
 """
-# Testing overlap reconciliation algorithm for WHOLE GENOME
+# Applying overlap reconciliation algorithm for WHOLE GENOME
 """
+
+
+def wholeGenomeOverlapRecon(gene_hits, e_value_threshold,
+                              coverage_threshold):
+    """
+    Returns a dictionary {gene: [HmmerHit]} after filtering &
+    overlap reconciliation for the whole genome "gene_hits", a parseHmm output {gene: [HmmerHit]}
+
+    Removes genes for which all the hits have been removed {gene: None}
+    """
+    result = {}
+    for gene, hits in gene_hits.items():
+        hits_to_keep = fetch_representative_hits(hits, e_value_threshold, coverage_threshold)
+        if hits_to_keep is not None:
+            result[gene] = hits_to_keep
+    return result
+
+
+# given an HMM_name, can you search if this genome has that HMM_profile?
+def domainSearch(domain_name, accepted_hits):
+    """
+    Returns True if domain_name exists within the list of accepted_hits
+    Returns False otherwise
+    """
+    for gene, hits in accepted_hits.items():
+        for hit in hits:
+            if hit.hmm_name == domain_name:
+                return True
+    return False
+
 gene_hits = parseHmm(file_path)
-for gene, hits in gene_hits.items():
-    print(fetch_representative_hits(hits, 1e-5, 0.6))
+result = wholeGenomeOverlapRecon(gene_hits, 1e-5, 0.6)
+print(result)
+print(domainSearch('MCM_AAA', result))
+print(domainSearch('fake_domain_name', result))
+
+
