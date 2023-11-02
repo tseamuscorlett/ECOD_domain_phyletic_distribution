@@ -298,3 +298,20 @@ print(domainSearch('MCM_AAA', result))
 print(domainSearch('fake_domain_name', result))
 
 
+# DS (distribution score) = fraction of phyla for which 50% of the genomes in
+# that phylum have the given domain (once for Archaea, once for Bacteria)
+
+"""
+def calculateDS(domain_name, [phyla]):
+    phylum_hit = 0
+    for phylum in phyla:
+        genome_hit = 0
+        for genome in phylum:
+             if domainSearch('domain_name', {gene: [HmmerHit]}):
+                genome_hit += 1
+        if (genome_hit/len(phylum)) >= 0.5:
+            phylum_hit += 1
+    return phylum_hit/len(phyla)
+"""
+
+
