@@ -2,10 +2,12 @@
 import math
 import matplotlib.pyplot as plt
 import itertools
+import pandas as pd
+import re
 import portion as P
 
 if __name__ == '__main__':
-    file_path = 'data/GB_GCA_000008085.1_protein.txt'
+    file_path = 'data/GB_GCA_000008085.1_protein.faa'
 
 
 class EcodDomain:
@@ -277,30 +279,39 @@ def wholeGenomeOverlapRecon(gene_hits, e_value_threshold,
 # given an HMM_name, can you search if this genome has that HMM_profile?
 def domainSearch(domain_name, accepted_hits):
     """
-    Returns True if domain_name exists within the list of accepted_hits
-    Returns False otherwise
+    Returns the frequency of domain_name within the list of accepted_hits as int
     """
+    count = 0
     for gene, hits in accepted_hits.items():
         for hit in hits:
             if hit.hmm_name == domain_name:
-                return True
-    return False
+                count += 1
+    return count
 
-# parse HMMER output
-gene_hits = parseHmm(file_path)
 
-# reconcile overlaps
-result = wholeGenomeOverlapRecon(gene_hits, 1e-5, 0.6)
-print(result)
-
-# search for domains
-print(domainSearch('MCM_AAA', result))
-print(domainSearch('fake_domain_name', result))
+"""
+# Testing domainSearch
+"""
+# # parse HMMER output
+# gene_hits = parseHmm(file_path)
+#
+# # reconcile overlaps
+# result = wholeGenomeOverlapRecon(gene_hits, 1e-5, 0.6)
+# print(result)
+# print(len(result))  # 298 genes
+#
+# # print frequency of domains
+# print(domainSearch('MCM_AAA', result))
+# print(domainSearch('fake_domain_name', result))
+#
+# counter = 0
+# for gene, hits in result.items():
+#     counter += len(hits)
+# print(counter)  # 414 hits; some domains may exist in multiple genes
 
 
 # DS (distribution score) = fraction of phyla for which 50% of the genomes in
 # that phylum have the given domain (once for Archaea, once for Bacteria)
-
 """
 def calculateDS(domain_name, [phyla]):
     phylum_hit = 0
@@ -314,4 +325,52 @@ def calculateDS(domain_name, [phyla]):
     return phylum_hit/len(phyla)
 """
 
+# instead, make a matrix...
+df = pd.DataFrame()
+"""
+for faa_file in data:
+    populateMatrix(faa_file)
+"""
+
+def populateDataFrame(file_path, df):
+    """
+    Parse the input faa file of Hmmer result, turns it into a "reconciled"
+    dictionary of {gene: [HmmerHit]} using wholeGenomeOverlapRecon.
+    Creates one "row" of dataframe where the row_name = genome name and
+    col_names = domain names.
+    Returns a new dataframe where the input df & the new "row" is concatenated.
+    """
+
+    # create a dict {gene: [HmmerHit]} from file_path
+    gene_hits = parseHmm(file_path)
+    # extract genome name
+    pattern = '[A-Z]{2}_[A-Z]{3}_\d+\.\d+'
+    genome_name = re.search(pattern, file_path).group()
+
+    # create a "reconciled" dict {gene: [HmmerHit]}
+    reconciled = wholeGenomeOverlapRecon(gene_hits, 1e-5, 0.6)
+
+    # Traverse reconciled hits; accumulate domainSearch results
+    searched = []
+    new_data = {}
+    for gene, hits in reconciled.items():
+        for hit in hits:
+            # new domain
+            if hit.hmm_name not in searched:
+                new_data[hit.hmm_name] = domainSearch(hit.hmm_name, reconciled)
+                searched.append(hit.hmm_name)
+
+    # turn new_data into a new row (dataframe) to be concatenated
+    new_row = pd.DataFrame(new_data, index=[genome_name])
+
+    # concatenate new df with input df
+    df = pd.concat([df, new_row])
+
+    # Fill missing values with 0
+    df.fillna(0, inplace=True)
+    return df
+
+
+df = populateDataFrame(file_path, df)
+print(df)
 

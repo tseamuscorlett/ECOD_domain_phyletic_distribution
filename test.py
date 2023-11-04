@@ -95,7 +95,7 @@ class OverlapPercentageTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    file_path = 'data/GB_GCA_000008085.1_protein.txt'
+    file_path = 'data/GB_GCA_000008085.1_protein.faa'
     import pytest
 
     pytest.main(['test.py'])
