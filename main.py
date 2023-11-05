@@ -1,5 +1,7 @@
 # Import Packages First
 import math
+import os
+
 import matplotlib.pyplot as plt
 import itertools
 import pandas as pd
@@ -94,7 +96,7 @@ class HmmerHit:
         self.hit_range = P.closed(int(hmm_line[19]), int(hmm_line[20]))  # Envelope coordinates; portion object Inteval
         self.evalue = float(hmm_line[6])
         self.ievalue = float(hmm_line[12])
-        self.cevalue = float(hmm_line[11]) # double check
+        self.cevalue = float(hmm_line[11])  # double check
 
     def __str__(self):
         """Prints string with some useful information"""
@@ -109,7 +111,7 @@ class HmmerHit:
         if type(other) == HmmerHit:
             return self.hmm_name == other.hmm_name
         else:
-            raise None # be careful about combining cross-class and != within class results
+            raise None  # be careful about combining cross-class and != within class results
 
     def __ne__(self, other):
         """Defines != operator; see __eq__."""
@@ -178,7 +180,8 @@ def overlapPercentage(po1, po2):
         return [0, 0]
     else:
         overlap_len = z.upper - z.lower + 1
-        return [float(overlap_len/(po1.upper - po1.lower + 1)), float(overlap_len/(po2.upper - po2.lower + 1))]
+        return [float(overlap_len / (po1.upper - po1.lower + 1)),
+                float(overlap_len / (po2.upper - po2.lower + 1))]
 
 
 def fetch_representative_hits(hmm_hits_list,
@@ -261,7 +264,7 @@ def fetch_representative_hits(hmm_hits_list,
 
 
 def wholeGenomeOverlapRecon(gene_hits, e_value_threshold,
-                              coverage_threshold):
+                            coverage_threshold):
     """
     Returns a dictionary {gene: [HmmerHit]} after filtering &
     overlap reconciliation for the whole genome "gene_hits", a parseHmm output {gene: [HmmerHit]}
@@ -310,27 +313,9 @@ def domainSearch(domain_name, accepted_hits):
 # print(counter)  # 414 hits; some domains may exist in multiple genes
 
 
-# DS (distribution score) = fraction of phyla for which 50% of the genomes in
-# that phylum have the given domain (once for Archaea, once for Bacteria)
-"""
-def calculateDS(domain_name, [phyla]):
-    phylum_hit = 0
-    for phylum in phyla:
-        genome_hit = 0
-        for genome in phylum:
-             if domainSearch('domain_name', {gene: [HmmerHit]}):
-                genome_hit += 1
-        if (genome_hit/len(phylum)) >= 0.5:
-            phylum_hit += 1
-    return phylum_hit/len(phyla)
-"""
-
-# instead, make a matrix...
+# make a matrix...
 df = pd.DataFrame()
-"""
-for faa_file in data:
-    populateMatrix(faa_file)
-"""
+
 
 def populateDataFrame(file_path, df):
     """
@@ -370,7 +355,90 @@ def populateDataFrame(file_path, df):
     df.fillna(0, inplace=True)
     return df
 
+# test populateDataFrame:
+# df = populateDataFrame(file_path, df)
+# print(df)
 
-df = populateDataFrame(file_path, df)
-print(df)
+"""
+
+========================================================
+DS score
+========================================================
+
+"""
+
+taxonomy_path = 'gtdb/ar53_taxonomy.tsv'
+
+# let's make a dictionary of {phylum: [genomes]} from the ar53_taxonomy.tsv file
+phylum_genomes = {}
+with open(taxonomy_path, 'r') as file:
+    output = file.readlines()
+
+    for line in output:
+        # Split the line into parts using tab ('\t') as the delimiter
+        parts = line.split('\t')
+        if len(parts) >= 2:
+            # Extract the desired parts from the split line
+            genome = parts[0]
+            phylum = parts[1].split(';')[
+                1]  # Assuming 'p__Phylum_name' is always the second part
+
+            # Check if phylum is already in the dictionary
+            if phylum in phylum_genomes:
+                # Append the genome to the existing list
+                phylum_genomes[phylum].append(genome)
+            else:
+                # Create a new list with the genome as the first element
+                phylum_genomes[phylum] = [genome]
+
+# print(phylum_genomes)
+
+# how many phyla?
+phyla = list(phylum_genomes.keys())
+print(phyla)
+print(len(phyla))  # 20
+
+
+# DS (distribution score) of a domain = fraction of phyla for which 50% of the genomes in
+# that phylum have the given domain (once for Archaea, once for Bacteria)
+def calculateDS(domain_name, phyla, df):
+    """
+    Returns a DS (distribution score) of a domain_name (str) within the
+    phyla {phylum: [genomes]}, where DS = fraction of phyla for which 50% of
+    the genomes in that phylum have the given domain. Requires a dataframe
+    as input where row_names = genome names, col_names = domain names, and values
+    = frequency of domain in that genome
+    """
+
+    phylum_hit = 0
+    for phylum, genomes in phyla.items():
+        genome_hit = 0
+        for genome in genomes:
+            # use Dataframe: Extract a value based on [column, row]
+            if df.index == genome:
+                if df.loc[genome, domain_name] > 0:
+                    genome_hit += 1
+        if (genome_hit / len(phylum)) >= 0.5:
+            phylum_hit += 1
+    return phylum_hit / len(phyla)
+
+# test calculateDS:
+# print(calculateDS('MCM_AAA', phylum_genomes, df))
+
+
+"""
+Create a big matrix 
+"""
+df = pd.DataFrame()
+data_path = '/Users/tseamuscorlett/Desktop/LongoLab/Fold_Gated/protein_properties/data'
+# change data_path and taxonomy_path above;
+# also change the csv file name below if needed
+
+# Iterate through the 'data' directory and process each .faa file
+for file_name in os.listdir(data_path):
+    faa_path = os.path.join(data_path, file_name)
+    df = populateDataFrame(faa_path, df)
+
+# Save the DataFrame to a CSV file
+df.to_csv('domain_genome_matrix_archaea.csv')
 
