@@ -370,6 +370,8 @@ def populateDataFrame(file_path, df):
 
 def populateMatrix(file_path, matrix):
     """
+    Requires first input matrix = [{}, {}]
+
     Parses the input faa file of Hmmer result, turns it into a "reconciled"
     dictionary of {gene: [HmmerHit]} using wholeGenomeOverlapRecon.
 
@@ -382,7 +384,7 @@ def populateMatrix(file_path, matrix):
     # create a dict {gene: [HmmerHit]} from file_path
     gene_hits = parseHmm(file_path)
 
-    # extract genome name and add to matrix[1]
+    # extract genome name and add to matrix[0]
     pattern = '[A-Z]{2}_[A-Z]{3}_\d+\.\d+'
     matrix[0][re.search(pattern, file_path).group()] = len(matrix[0])
 
@@ -390,19 +392,20 @@ def populateMatrix(file_path, matrix):
     reconciled = wholeGenomeOverlapRecon(gene_hits, 1e-5, 0.6)
 
     # Traverse reconciled hits; accumulate domainSearch results
-    new_values = 20000 * [0]
-    searched = []
+    new_values = 10000 * [0]
+    searched = set()
     for gene, hits in reconciled.items():
         for hit in hits:
             # new domain
             if hit.hmm_name not in matrix[1]:
-                matrix[1][hit.hmm_name] = len(matrix[1])
-                new_values[len(matrix[1]) - 1] += domainSearch(hit.hmm_name, reconciled)
-                searched.append(hit.hmm_name)
+                new_index = len(matrix[1])
+                matrix[1][hit.hmm_name] = new_index
+                new_values[new_index - 1] += domainSearch(hit.hmm_name, reconciled)
+                searched.add(hit.hmm_name)
             # old domain
-            elif hit.hmm_name not in searched:
+            elif not {hit.hmm_name}.isdisjoint(searched):
                 new_values[matrix[1][hit.hmm_name]] += domainSearch(hit.hmm_name, reconciled)
-                searched.append(hit.hmm_name)
+                searched.add(hit.hmm_name)
 
     # append new_values to the input matrix (list of lists)
     matrix.append(new_values)
@@ -417,6 +420,54 @@ def populateMatrix(file_path, matrix):
 # print(matrix)
 # print(len(matrix[0]))
 
+
+def populateMatrixFast(file_path, matrix):
+    """
+    Requires first input matrix = [{}, {}]
+
+    Parses the input faa file of Hmmer result, turns it into a "reconciled"
+    dictionary of {gene: [HmmerHit]} using wholeGenomeOverlapRecon.
+
+    Creates one "row" list of "domain frequencies" by traversing the reconciled hits.
+
+    Returns a new matrix (list of lists) where the new "row" list is appended
+    to the input matrix.
+    """
+
+    # create a dict {gene: [HmmerHit]} from file_path
+    gene_hits = parseHmm(file_path)
+
+    # extract genome name and add to matrix[0] 'dict of genomes'
+    pattern = '[A-Z]{2}_[A-Z]{3}_\d+\.\d+'
+    matrix[0][re.search(pattern, file_path).group()] = len(matrix[0])
+
+    # create a "reconciled" dict {gene: [HmmerHit]}
+    reconciled = wholeGenomeOverlapRecon(gene_hits, 1e-5, 0.6)
+
+    # Traverse reconciled hits to update matrix[1] 'dict of domains'
+    for gene, hits in reconciled.items():
+        for hit in hits:
+            if hit.hmm_name not in matrix[1]:
+                matrix[1][hit.hmm_name] = len(matrix[1])
+
+    # Traverse reconciled hits to accumulate 'hits per domain'
+    new_values = 10000 * [0]
+    for gene, hits in reconciled.items():
+        for hit in hits:
+            new_values[matrix[1][hit.hmm_name]] += 1
+
+    # append new_values to the input matrix (list of lists)
+    matrix.append(new_values)
+
+    return matrix
+
+
+# test populateMatrixFast for one file
+
+# matrix = [{}, {}]
+# matrix = populateMatrixFast(file_path, matrix)
+# print(matrix)
+# print(len(matrix[1]))
 
 """
 
@@ -494,24 +545,24 @@ Create a big Dataframe
 # that phylum have the given domain (once for Archaea, once for Bacteria)
 
 """
-Create a big matrix
+Create a big matrix (FAST)
 """
-data_path = '/Users/tseamuscorlett/Desktop/LongoLab/Fold_Gated/protein_properties/gtdb/archaea'
-matrix = [{}, {}]
-
-# Iterate through the 'data' directory and process each .faa file
-for file_name in os.listdir(data_path):
-    faa_path = os.path.join(data_path, file_name)
-    matrix = populateMatrix(faa_path, matrix)
-
-# save matrix as csv
-csv_file = "matrix_archaea.csv"
-
-# Open the CSV file in write mode
-with open(csv_file, mode='w', newline='') as file:
-    writer = csv.writer(file)
-    for row in matrix:
-        writer.writerow(row)
+# data_path = '/Users/tseamuscorlett/Desktop/LongoLab/Fold_Gated/protein_properties/gtdb/archaea'
+# matrix = [{}, {}]
+#
+# # Iterate through the 'data' directory and process each .faa file
+# for file_name in os.listdir(data_path):
+#     faa_path = os.path.join(data_path, file_name)
+#     matrix = populateMatrixFast(faa_path, matrix)
+#
+# # save matrix as csv
+# csv_file = "matrix_archaea_fast.csv"
+#
+# # Open the CSV file in write mode
+# with open(csv_file, mode='w', newline='') as file:
+#     writer = csv.writer(file)
+#     for row in matrix:
+#         writer.writerow(row)
 
 
 
@@ -679,3 +730,84 @@ Scaling law for each domain:
 # plt.ylabel('domain count')
 # plt.show()
 # plt.savefig("images/Sigma54_activat.png")
+
+"""
+F –> X-groups
+"""
+
+"""
+Create a dict {domain.f_name: ['X-group']} from ecod.develop279.domains.txt
+Make sure to resolve "ambiguous" case of 1 F-group mapping to 2+ X-groups
+"""
+# domain.f_id.split('.', 1)[0]
+# 2004.1.1.140 => 2004
+
+
+# with open('data/ecod.develop279.domains.txt', 'r') as file:
+#     output = file.readlines()
+# f_to_x = {}
+# for line in output:
+#     if line[0] == '#':  # skip the first lines
+#         continue
+#     domain = EcodDomain(line)
+#     # new domain (F-group) name
+#     if domain.f_name not in f_to_x:  # ppk2
+#         f_to_x[domain.f_name] = [domain.f_id.split('.', 1)[0]]
+#     # old domain (F-group) name AND the X-group is different
+#     elif f_to_x[domain.f_name][0] != domain.f_id.split('.', 1)[0]:
+#         f_to_x[domain.f_name] = 'ambiguous'
+#
+# print(f_to_x)
+
+
+def mapFtoX(df, f_to_x):
+    """
+
+    """
+    # empty df
+    new_df = pd.DataFrame()
+
+    xgroups = []
+
+    for column in df.columns:
+        # get X-group for the column (F-Group) using f_to_x
+        xgroup = f_to_x[column][0]
+
+        # check that it's not "ambiguous"
+        if xgroup != 'a':
+            # new X-group
+            if xgroup not in xgroups:
+                new_df[xgroup] = df[column]
+                xgroups.append(xgroup)
+
+            # X-group already exists
+            else:
+                new_df[xgroup] = new_df[xgroup].add(df[column], fill_value=0)
+
+    return new_df
+
+
+# let's use mapFtoX to create "x-group_genome_matrix_archaea.csv"
+# df = pd.read_csv('domain_genome_matrix_archaea.csv', index_col=0)
+#
+# df = mapFtoX(df, f_to_x)
+#
+# # Save the DataFrame to a CSV file
+# df.to_csv('x-group_genome_matrix_archaea.csv', index=False)
+
+
+"""
+check cases where f_id contains a comma (e.g., DALR_1,tRNA-synt_1d)
+"""
+
+with open('data/ecod.develop279.domains.txt', 'r') as file:
+    output = file.readlines()
+commas = set()
+for line in output:
+    if line[0] == '#':  # skip the first lines
+        continue
+    domain = EcodDomain(line)
+    if ',' in domain.f_name:
+        commas.add(domain.f_name)
+
+print(commas)
