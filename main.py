@@ -906,9 +906,3 @@ for x_group in x_matrix.columns:
 # CSV file export
 x_DS_archaea = pd.DataFrame(x_group_DS_archaea_dict)
 x_DS_archaea.to_csv('xgroup_DS_archaea.csv')
-#
-# DS_archaea = pd.read_csv('DS_archaea.csv', index_col=0)
-# print(DS_archaea['MCM_AAA'])
-# print(DS_archaea['Sigma54_activat'])
-# print(DS_archaea['MoxR'])
-# print(DS_archaea['fake domain name'])  # will raise KeyError
