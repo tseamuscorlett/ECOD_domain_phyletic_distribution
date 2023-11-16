@@ -2,6 +2,7 @@
 import csv
 import math
 import os
+import scipy
 
 import matplotlib.pyplot as plt
 import itertools
@@ -476,8 +477,9 @@ DS score
 ========================================================
 
 """
-# make a dictionary of {phylum: [genomes]} from the ar53_taxonomy.tsv file
-taxonomy_path = 'gtdb/ar53_taxonomy.tsv'
+# make a dictionary of {phylum: [genomes]} from taxonomy.tsv file
+# taxonomy_path = 'gtdb/ar53_taxonomy.tsv'
+taxonomy_path = 'gtdb/bac120_taxonomy.tsv'
 phylum_genomes = {}
 
 with open(taxonomy_path, 'r') as file:
@@ -501,15 +503,17 @@ with open(taxonomy_path, 'r') as file:
                 phylum_genomes[phylum] = [genome]
 
 
-# how many phyla?
+# # how many phyla?
 # phyla = list(phylum_genomes.keys())
-# print(phyla)
-# print(len(phyla))  # 20
-#
+# # print(phyla)
+# print(len(phyla))  # 20 archaea, 169 bacteria
+
 # phylum_sizes = []
 # for phylum, genomes in phylum_genomes.items():
 #     phylum_sizes.append(len(genomes))
-# print(phylum_sizes)  # [1429, 1220, 458, 1192, 62, 850, "11", 131, 137, 46, 229, 124, 77, "10", 20, 19, 16, 16, 6, 9]
+# print(phylum_sizes)
+# archaea: [1429, 1220, 458, 1192, 62, 850, "11", 131, 137, 46, 229, 124, 77, "10", 20, 19, 16, 16, 6, 9]
+# bacteria: [141114, 61795, 28532, 21744, 6845, 2331, 20893, 2848, 612, 2818, 1230, 1472, 412, 295, 1503, 2214, 4645, 31, 101, 492, 208, 496, 499, 627, 42, 276, 456, 228, 313, 109, 120, 122, 1602, 147, 404, 244, 116, 22, 10, 325, 63, 21, 414, 79, 223, 171, 54, 54, 21, 119, 62, 102, 105, 92, 53, 107, 54, 161, 7, 12, 82, 24, 92, 32, 11, 77, 50, 52, 16, 10, 12, 14, 7, 55, 50, 10, 15, 25, 20, 14, 8, 8, 29, 25, 38, 7, 27, 27, 22, 11, 23, 15, 5, 25, 27, 8, 4, 17, 2, 6, 3, 2, 4, 7, 4, 5, 4, 2, 2, 10, 6, 3, 7, 3, 4, 4, 10, 3, 8, 2, 5, 7, 2, 2, 1, 6, 3, 8, 1, 2, 2, 2, 1, 11, 4, 4, 1, 3, 1, 3, 1, 2, 1, 2, 2, 3, 2, 3, 1, 3, 1, 2, 2, 1, 2, 1, 1, 1, 2, 5, 1, 1, 2, 2, 1, 1, 1, 1, 1]
 
 # how many genomes?
 # print(sum(phylum_sizes))  # 6062
@@ -564,6 +568,26 @@ Create a big matrix (FAST)
 #     for row in matrix:
 #         writer.writerow(row)
 
+# parse the FAST matrix (.csv) into a dataframe
+df = pd.read_csv('matrix_archaea_fast.csv', header=None)
+
+index_row = df.iloc[0]
+column_row = df.iloc[1]
+df = df[2:]  # df without the first two lines
+
+column_row.dropna(axis=0, inplace=True)  # drop NaN columns;
+index_row.dropna(axis=0, inplace=True)  # drop NaN rows;
+
+# Find the difference in df vs. column_row
+remove = len(df.columns) - len(column_row)
+# Cut the last n columns from df
+df = df.iloc[:, :-remove]
+
+df.index = index_row
+df.columns = column_row
+print(df)
+
+df.to_csv('matrix_archaea_fast_parsed.csv')
 
 
 def calculateDS(domain_name, phyla, df, phylum_sizes=None):
@@ -656,6 +680,8 @@ by using calculateDSExtra
 """
 calculateDS for all domains:
 """
+# archaea
+
 # DS_archaea_dict = {}
 # matrix = pd.read_csv('domain_genome_matrix_archaea.csv', index_col=0)
 # my_phylum_sizes = [768, 696, 172, 543, 32, 577, 1, 112, 92, 24, 176, 82, 58, 5, 16, 16, 14, 13, 6, 9]
@@ -672,6 +698,20 @@ calculateDS for all domains:
 # print(DS_archaea['Sigma54_activat'])
 # print(DS_archaea['MoxR'])
 # print(DS_archaea['fake domain name'])  # will raise KeyError
+
+
+# bacteria
+my_phylum_sizes = [141114, 61795, 28532, 21744, 6845, 2331, 20893, 2848, 612, 2818, 1230, 1472, 412, 295, 1503, 2214, 4645, 31, 101, 492, 208, 496, 499, 627, 42, 276, 456, 228, 313, 109, 120, 122, 1602, 147, 404, 244, 116, 22, 10, 325, 63, 21, 414, 79, 223, 171, 54, 54, 21, 119, 62, 102, 105, 92, 53, 107, 54, 161, 7, 12, 82, 24, 92, 32, 11, 77, 50, 52, 16, 10, 12, 14, 7, 55, 50, 10, 15, 25, 20, 14, 8, 8, 29, 25, 38, 7, 27, 27, 22, 11, 23, 15, 5, 25, 27, 8, 4, 17, 2, 6, 3, 2, 4, 7, 4, 5, 4, 2, 2, 10, 6, 3, 7, 3, 4, 4, 10, 3, 8, 2, 5, 7, 2, 2, 1, 6, 3, 8, 1, 2, 2, 2, 1, 11, 4, 4, 1, 3, 1, 3, 1, 2, 1, 2, 2, 3, 2, 3, 1, 3, 1, 2, 2, 1, 2, 1, 1, 1, 2, 5, 1, 1, 2, 2, 1, 1, 1, 1, 1]
+DS_bacteria_dict = {}
+# matrix = pd.read_csv('matrix_bacteria_fast.csv', index_col=0)
+# this takes too long!!!
+
+with open('matrix_bacteria_fast.csv', 'r') as file:
+    output = file.readlines()
+    for line in output:
+        if line[0] == '#':  # skip the first lines
+            continue
+
 
 
 """
@@ -891,18 +931,18 @@ def mapFtoX(df, f_to_x, same):
 """
 DS for X-groups!
 """
-x_matrix = pd.read_csv('x-group_genome_matrix_archaea.csv', index_col=0)
-my_phylum_sizes = [768, 696, 172, 543, 32, 577, 1, 112, 92, 24, 176, 82, 58, 5, 16, 16, 14, 13, 6, 9]
-
-print(calculateDS('2004', phylum_genomes, x_matrix, my_phylum_sizes))  # 1.0
-print(calculateDS('4040', phylum_genomes, x_matrix, my_phylum_sizes))  # 0.35
-print(calculateDS('4092', phylum_genomes, x_matrix, my_phylum_sizes))  # 0.0
-
-x_group_DS_archaea_dict = {}
-
-for x_group in x_matrix.columns:
-    x_group_DS_archaea_dict[x_group] = [calculateDS(x_group, phylum_genomes, x_matrix, my_phylum_sizes)]
-
-# CSV file export
-x_DS_archaea = pd.DataFrame(x_group_DS_archaea_dict)
-x_DS_archaea.to_csv('xgroup_DS_archaea.csv')
+# x_matrix = pd.read_csv('x-group_genome_matrix_archaea.csv', index_col=0)
+# my_phylum_sizes = [768, 696, 172, 543, 32, 577, 1, 112, 92, 24, 176, 82, 58, 5, 16, 16, 14, 13, 6, 9]
+#
+# print(calculateDS('2004', phylum_genomes, x_matrix, my_phylum_sizes))  # 1.0
+# print(calculateDS('4040', phylum_genomes, x_matrix, my_phylum_sizes))  # 0.35
+# print(calculateDS('4092', phylum_genomes, x_matrix, my_phylum_sizes))  # 0.0
+#
+# x_group_DS_archaea_dict = {}
+#
+# for x_group in x_matrix.columns:
+#     x_group_DS_archaea_dict[x_group] = [calculateDS(x_group, phylum_genomes, x_matrix, my_phylum_sizes)]
+#
+# # CSV file export
+# x_DS_archaea = pd.DataFrame(x_group_DS_archaea_dict)
+# x_DS_archaea.to_csv('xgroup_DS_archaea.csv')
