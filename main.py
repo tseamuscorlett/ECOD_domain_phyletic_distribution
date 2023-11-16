@@ -568,27 +568,35 @@ Create a big matrix (FAST)
 #     for row in matrix:
 #         writer.writerow(row)
 
-# parse the FAST matrix (.csv) into a dataframe
-df = pd.read_csv('matrix_archaea_fast.csv', header=None)
 
-index_row = df.iloc[0]
-column_row = df.iloc[1]
-df = df[2:]  # df without the first two lines
+def parseMatrix(file_path):
+    """
+    Parse the output of populateMatrixFast
+    Assumes the 1st row is the index row, the 2nd row is the column row
+    """
 
-column_row.dropna(axis=0, inplace=True)  # drop NaN columns;
-index_row.dropna(axis=0, inplace=True)  # drop NaN rows;
+    df = pd.read_csv(file_path, header=None)
 
-# Find the difference in df vs. column_row
-remove = len(df.columns) - len(column_row)
-# Cut the last n columns from df
-df = df.iloc[:, :-remove]
+    index_row = df.iloc[0]
+    column_row = df.iloc[1]
+    df = df[2:]  # df without the first two lines
 
-df.index = index_row
-df.columns = column_row
-print(df)
+    column_row.dropna(axis=0, inplace=True)  # drop NaN columns;
+    index_row.dropna(axis=0, inplace=True)  # drop NaN rows;
 
-df.to_csv('matrix_archaea_fast_parsed.csv')
+    # Find the difference in df vs. column_row
+    remove = len(df.columns) - len(column_row)
+    # Cut the last n columns from df
+    df = df.iloc[:, :-remove]
 
+    df.index = index_row
+    df.columns = column_row
+
+    return df
+
+
+parsed_bac_matrix = parseMatrix('matrix_bacteria_fast.csv')
+parsed_bac_matrix.to_csv('matrix_bacteria_fast_parsed.csv')
 
 def calculateDS(domain_name, phyla, df, phylum_sizes=None):
     """
@@ -704,13 +712,7 @@ calculateDS for all domains:
 my_phylum_sizes = [141114, 61795, 28532, 21744, 6845, 2331, 20893, 2848, 612, 2818, 1230, 1472, 412, 295, 1503, 2214, 4645, 31, 101, 492, 208, 496, 499, 627, 42, 276, 456, 228, 313, 109, 120, 122, 1602, 147, 404, 244, 116, 22, 10, 325, 63, 21, 414, 79, 223, 171, 54, 54, 21, 119, 62, 102, 105, 92, 53, 107, 54, 161, 7, 12, 82, 24, 92, 32, 11, 77, 50, 52, 16, 10, 12, 14, 7, 55, 50, 10, 15, 25, 20, 14, 8, 8, 29, 25, 38, 7, 27, 27, 22, 11, 23, 15, 5, 25, 27, 8, 4, 17, 2, 6, 3, 2, 4, 7, 4, 5, 4, 2, 2, 10, 6, 3, 7, 3, 4, 4, 10, 3, 8, 2, 5, 7, 2, 2, 1, 6, 3, 8, 1, 2, 2, 2, 1, 11, 4, 4, 1, 3, 1, 3, 1, 2, 1, 2, 2, 3, 2, 3, 1, 3, 1, 2, 2, 1, 2, 1, 1, 1, 2, 5, 1, 1, 2, 2, 1, 1, 1, 1, 1]
 DS_bacteria_dict = {}
 # matrix = pd.read_csv('matrix_bacteria_fast.csv', index_col=0)
-# this takes too long!!!
-
-with open('matrix_bacteria_fast.csv', 'r') as file:
-    output = file.readlines()
-    for line in output:
-        if line[0] == '#':  # skip the first lines
-            continue
+# this takes too long??
 
 
 
