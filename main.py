@@ -832,28 +832,25 @@ DS for X-groups!
 """
 Scaling law for each domain:
 """
-domains_dict, genomes_dict, output = parseMatrix('matrix_archaea_fast.csv')
+# domains_dict, genomes_dict, output = parseMatrix('matrix_archaea_fast.csv')
+# #
+# # X-axis: make a list of genome sizes
+# genome_sizes = []
+# for row in output:
+#     genome_sizes.append(sum(row))
 #
-# X-axis: make a list of genome sizes
-genome_sizes = []
-for row in output:
-    genome_sizes.append(sum(row))
-
-# Y-axis: for one domain 'Sigma54_activat'
-dom_index = domains_dict['Sigma54_activat']
-dom_freq = []
-for row in output:
-    dom_freq.append(output[dom_index])
-
-
-print(genome_sizes)
-print(dom_freq)
-print(len(genome_sizes))
-print(len(dom_freq))
-
-# plot
-plt.scatter(genome_sizes, dom_freq, marker='o', color='b', label='Data Points')
-plt.xlabel('genome size')
-plt.ylabel('domain count')
-plt.show()
-plt.savefig("images/Sigma54_activat.png")
+# # Y-axis: for one domain 'Sigma54_activat'
+# dom_index = domains_dict['Sigma54_activat']  # 3
+# dom_freq = []
+# for row in output:
+#     dom_freq.append(row[dom_index])
+#
+# print(dom_freq)
+# print(len(dom_freq))
+#
+# # plot
+# plt.scatter(genome_sizes, dom_freq, marker='o', color='b', label='Data Points')
+# plt.xlabel('genome size')
+# plt.ylabel('domain count')
+# plt.show()
+# plt.savefig("images/Sigma54_activat.png")
