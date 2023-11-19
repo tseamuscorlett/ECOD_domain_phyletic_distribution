@@ -829,6 +829,23 @@ DS for X-groups!
 # dict2csv(x_DS_bacteria_dict, csv_file_path)
 
 
+# combine archaea + bacteria
+x_DS_archaea_dict = csv2dict('xgroup2DS_archaea.csv')
+x_DS_combined_dict = csv2dict('xgroup2DS_bacteria.csv')
+x_DS_shared_dict = {}
+
+for key in x_DS_archaea_dict:
+    if key not in x_DS_combined_dict:  # archaea xgroup not in bacteria
+        x_DS_combined_dict[key] = x_DS_archaea_dict[key]
+    else:  # shared xgroup
+        x_DS_shared_dict[key] = [x_DS_combined_dict[key][0], x_DS_archaea_dict[key][0]]
+        new = (float(x_DS_combined_dict[key][0]) + float(x_DS_archaea_dict[key][0]))/2
+        x_DS_combined_dict[key] = [new]
+
+dict2csv(x_DS_shared_dict, 'xgroup2DS_shared.csv')
+dict2csv(x_DS_combined_dict, 'xgroup2DS_combined.csv')
+
+
 """
 Scaling law for each domain:
 """
