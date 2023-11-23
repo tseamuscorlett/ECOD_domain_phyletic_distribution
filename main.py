@@ -555,6 +555,33 @@ def csv2dict(csv_file_path):
     return result_dict
 
 
+def recoverFgroup(file_path, f_to_x):
+    """
+    Export a new matrix (list of lists) as .csv where the lost F-groups have
+    been recovered from f_to_x
+    """
+    domains_dict, genomes_dict, output = parseMatrix(file_path)
+    new = 0
+    for fgroup in f_to_x.keys():
+        if fgroup not in domains_dict:
+            print(fgroup)
+            # add new fgroup to domains_dict
+            domains_dict[fgroup] = len(domains_dict)
+            new += 1
+
+    # extend output lists
+    for row in output:
+        row.extend(new * [0])
+
+    # export as csv
+    csv_file = "recovered.csv"
+    with open(csv_file, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(genomes_dict.keys())
+        writer.writerow(domains_dict.keys())
+        for row in output:
+            writer.writerow(row)
+
 """
 ========================================================
 DS score
@@ -798,8 +825,8 @@ F –> X-groups
 Finally, map FtoX and save a new matrix as csv
 """
 
-f_to_x = csv2dict('f_to_x.csv')
-same = csv2dict('same.csv')
+# f_to_x = csv2dict('f_to_x.csv')
+# same = csv2dict('same.csv')
 
 # archaea
 # mapFtoXMatrix('matrix_archaea_fast.csv', f_to_x, same)
@@ -829,21 +856,21 @@ DS for X-groups!
 # dict2csv(x_DS_bacteria_dict, csv_file_path)
 
 
-# combine archaea + bacteria
-x_DS_archaea_dict = csv2dict('xgroup2DS_archaea.csv')
-x_DS_combined_dict = csv2dict('xgroup2DS_bacteria.csv')
-x_DS_shared_dict = {}
-
-for key in x_DS_archaea_dict:
-    if key not in x_DS_combined_dict:  # archaea xgroup not in bacteria
-        x_DS_combined_dict[key] = x_DS_archaea_dict[key]
-    else:  # shared xgroup
-        x_DS_shared_dict[key] = [x_DS_combined_dict[key][0], x_DS_archaea_dict[key][0]]
-        new = (float(x_DS_combined_dict[key][0]) + float(x_DS_archaea_dict[key][0]))/2
-        x_DS_combined_dict[key] = [new]
-
-dict2csv(x_DS_shared_dict, 'xgroup2DS_shared.csv')
-dict2csv(x_DS_combined_dict, 'xgroup2DS_combined.csv')
+# # combine archaea + bacteria
+# x_DS_archaea_dict = csv2dict('xgroup2DS_archaea.csv')
+# x_DS_combined_dict = csv2dict('xgroup2DS_bacteria.csv')
+# x_DS_shared_dict = {}
+#
+# for key in x_DS_archaea_dict:
+#     if key not in x_DS_combined_dict:  # archaea xgroup not in bacteria
+#         x_DS_combined_dict[key] = x_DS_archaea_dict[key]
+#     else:  # shared xgroup
+#         x_DS_shared_dict[key] = [x_DS_combined_dict[key][0], x_DS_archaea_dict[key][0]]
+#         new = (float(x_DS_combined_dict[key][0]) + float(x_DS_archaea_dict[key][0]))/2
+#         x_DS_combined_dict[key] = [new]
+#
+# dict2csv(x_DS_shared_dict, 'xgroup2DS_shared.csv')
+# dict2csv(x_DS_combined_dict, 'xgroup2DS_combined.csv')
 
 
 """
@@ -871,3 +898,11 @@ Scaling law for each domain:
 # plt.ylabel('domain count')
 # plt.show()
 # plt.savefig("images/Sigma54_activat.png")
+
+
+"""
+Recover the lost F/Xgroups
+"""
+f_to_x = csv2dict('f_to_x.csv')
+recoverFgroup('matrix_archaea_fast.csv', f_to_x)
+# recoverFgroup('matrix_bacteria_fast.csv', f_to_x)
