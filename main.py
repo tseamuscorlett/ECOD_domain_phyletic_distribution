@@ -2,6 +2,8 @@
 import csv
 import math
 import os
+from io import StringIO
+
 import scipy
 
 import matplotlib.pyplot as plt
@@ -327,7 +329,13 @@ def populateMatrixFast(file_path, matrix):
     gene_hits = parseHmm(file_path)
 
     # extract genome name and add to matrix[0] 'dict of genomes'
-    pattern = '[A-Z]{2}_[A-Z]{3}_\d+\.\d+'
+
+    # archaea & bacteria patterns from gtdb (e.g. GB_GCA_000008085.1)
+    # pattern = '[A-Z]{2}_[A-Z]{3}_\d+\.\d+'
+
+    # eukaryotes pattern from Eukprot (e.g. EP00001_Diaphorina_citri)
+    pattern = '[A-Z]{2}\d+'
+
     matrix[0][re.search(pattern, file_path).group()] = len(matrix[0])
 
     # create a "reconciled" dict {gene: [HmmerHit]}
@@ -402,6 +410,32 @@ def calculateDSMatrix(file_path, phyla, phylum_sizes=None):
     return domainDS_dict
 
 
+def calculateDSnoPhyla(file_path):
+    """
+    Returns a dictionary of F/X-groups (str) : distribution_score (int)
+    where DS = fraction of genomes with the given domain (no consideration of phyla)
+
+    Requires a file_path of .csv file from which a MATRIX (list of lists) is made
+    where 1st row is the genomes, 2nd row is the domain_names, and the rest are the
+    domain frequencies.
+    """
+
+    domains_dict, genomes_dict, output = parseMatrix(file_path)
+
+    domainDS_dict = {}
+    for domain in domains_dict:
+        dom_index = domains_dict[domain]
+        genome_hit = 0
+
+        for genome in genomes_dict:
+            gen_index = genomes_dict[genome]
+            if int(output[gen_index][dom_index]) > 0:
+                genome_hit += 1
+
+        domainDS_dict[domain] = [genome_hit / len(genomes_dict)]
+    return domainDS_dict
+
+
 def countDomains(file_path, domains):
     """
     Updates and returns the given dict 'domains' by adding all domains found in
@@ -435,7 +469,7 @@ def mapFtoXMatrix(file_path, f_to_x, same):
         # get X-group (f_to_x = {'F-group': ['X-group']})
         try:
             xgroup = f_to_x[domain][0]  # e.g. '2004'
-        # if no EXACT match (DALR_1), check within 'same'
+        # if no EXACT match (e.g. DALR_1 vs. DALR_1,tRNA-synt_1d), check within 'same' for partial match
         except KeyError:
             for key in same:
                 if domain in key:
@@ -500,9 +534,19 @@ def parseMatrix(file_path):
     genomes_row = list(filter(lambda x: (x != ''), output[0].strip().split(',')))
     domains_row = list(filter(lambda x: (x != ''), output[1].strip().split(',')))
 
+    # deal with 'SAM_Arap_1,2,3_like'
+    modified_domains_row = []
+    for fname in domains_row:
+        if fname.startswith('SAM_Arap'):
+            modified_domains_row.append('SAM_Arap_1,2,3_like')
+        elif fname == '2' or fname == '3_like':
+            continue
+        else:
+            modified_domains_row.append(fname)
+
     # turn lists into dicts for faster lookup
     genomes_dict = {item: index for index, item in enumerate(genomes_row)}
-    domains_dict = {item: index for index, item in enumerate(domains_row)}
+    domains_dict = {item: index for index, item in enumerate(modified_domains_row)}
 
     # parse the rest of output into list of lists
     output = output[2:]
@@ -589,13 +633,14 @@ How many domains in reference genomes?
 """
 # data_path = 'gtdb/archaea'
 # data_path = 'gtdb/bacteria'
-#
+# data_path = 'gtdb/eukaryotes'
+
 # domains = {}
 # for file_name in os.listdir(data_path):
 #     faa_path = os.path.join(data_path, file_name)
 #     domains = countDomains(faa_path, domains)
 # print(domains)
-# print(len(domains))  # 10948 for archaea, 12309 for bacteria
+# print(len(domains))  # 10948 for archaea, 12309 for bacteria, 11795 for eukaryotes
 
 
 """
@@ -604,10 +649,10 @@ DS score
 ========================================================
 """
 # Work with archaea:
-# taxonomy_path = 'gtdb/ar53_taxonomy.tsv'
+taxonomy_path = 'gtdb/ar53_taxonomy.tsv'
 
 # Work with bacteria:
-taxonomy_path = 'gtdb/bac120_taxonomy.tsv'
+# taxonomy_path = 'gtdb/bac120_taxonomy.tsv'
 
 phylum_genomes = {}
 with open(taxonomy_path, 'r') as file:
@@ -651,10 +696,35 @@ with open(taxonomy_path, 'r') as file:
 
 
 """
-Check the sizes of our "reference genomes"
+Create a big matrix
 """
+# data_path = 'gtdb/archaea'
+# data_path = 'gtdb/bacteria'
+# data_path = 'gtdb/eukaryotes'
 
-# change taxonomy path accordingly!!!
+# matrix = [{}, {}]
+#
+# # Iterate through the 'data' directory and process each .faa file
+# for file_name in os.listdir(data_path):
+#     faa_path = os.path.join(data_path, file_name)
+#     matrix = populateMatrixFast(faa_path, matrix)
+#
+# # # save matrix as csv
+# # csv_file = "matrix_archaea_fast.csv"
+# # csv_file = "matrix_bacteria_fast.csv"
+# csv_file = "matrix_eukaryotes_fast.csv"
+# #
+# # Open the CSV file in write mode
+# with open(csv_file, mode='w', newline='') as file:
+#     writer = csv.writer(file)
+#     for row in matrix:
+#         writer.writerow(row)
+
+
+"""
+Check the sizes of our "reference genomes"
+(change taxonomy path accordingly!!!)
+"""
 
 # # archaea phylum sizes
 # my_phylum_sizes = countPhylumSizesMatrix('matrix_archaea_fast.csv')
@@ -669,29 +739,6 @@ Check the sizes of our "reference genomes"
 # print(sum(my_phylum_sizes))
 # [17350, 4216, 7328, 8242, 550, 695, 8588, 1325, 171, 1372, 395, 873, 96, 144, 939, 1387, 2485, 5, 49, 314, 131, 186, 323, 393, 8, 132, 237, 83, 189, 60, 60, 40, 1071, 81, 236, 139, 72, 7, 1, 224, 35, 10, 282, 37, 120, 88, 26, 33, 11, 76, 47, 54, 77, 65, 26, 76, 37, 104, 2, 7, 61, 15, 66, 21, 6, 46, 36, 34, 7, 3, 5, 9, 3, 42, 30, 5, 7, 18, 13, 11, 4, 4, 21, 17, 31, 5, 18, 22, 17, 9, 19, 13, 3, 19, 21, 5, 2, 16, 1, 5, 2, 1, 3, 6, 2, 4, 3, 1, 1, 8, 5, 2, 6, 2, 2, 3, 9, 2, 8, 2, 5, 7, 2, 2, 1, 6, 3, 8, 1, 2, 2, 2, 1, 11, 4, 4, 1, 3, 1, 3, 1, 2, 1, 2, 2, 3, 2, 3, 1, 3, 1, 2, 2, 1, 2, 1, 1, 1, 2, 5, 1, 1, 2, 2, 1, 1, 1, 1, 1]
 # 62291
-
-"""
-Create a big matrix
-"""
-# data_path = '/Users/tseamuscorlett/Desktop/LongoLab/Fold_Gated/protein_properties/gtdb/archaea'
-# data_path = '/Users/tseamuscorlett/Desktop/LongoLab/Fold_Gated/protein_properties/gtdb/bacteria'
-
-# matrix = [{}, {}]
-#
-# # Iterate through the 'data' directory and process each .faa file
-# for file_name in os.listdir(data_path):
-#     faa_path = os.path.join(data_path, file_name)
-#     matrix = populateMatrixFast(faa_path, matrix)
-#
-# # save matrix as csv
-# csv_file = "matrix_archaea_fast.csv"
-# csv_file = "matrix_bacteria_fast.csv"
-#
-# # Open the CSV file in write mode
-# with open(csv_file, mode='w', newline='') as file:
-#     writer = csv.writer(file)
-#     for row in matrix:
-#         writer.writerow(row)
 
 
 """
@@ -712,16 +759,19 @@ Recover the lost F/Xgroups
 # dict2csv(profile_names, path)
 
 # profile_names = csv2dict('profile_names.csv')
+
 # recoverFgroup('matrix_archaea_fast.csv', profile_names)
 # recoverFgroup('matrix_bacteria_fast.csv', profile_names)
+# recoverFgroup('matrix_eukaryotes_fast.csv', profile_names)
 
 # a, b, c = parseMatrix('matrix_archaea_recovered.csv')
-# print(len(a), len(b), len(c))  # 12318 3412 3412
-#  '"SAM_Arap1', '2', '3_like"' must be reconciled s.t. len(a) = 12316
-# my solution: edit the .csv directly => 'SAM_Arap1_2_3_like'
-#
+# print(len(a), len(b), len(c))  # 12316 3412 3412
+
 # d, e, f = parseMatrix('matrix_bacteria_recovered.csv')
 # print(len(d), len(e), len(f))  # 12316 62291 62291
+
+# d, e, f = parseMatrix('matrix_eukaryotes_recovered.csv')
+# print(len(d), len(e), len(f))  # 12316 196 196
 
 
 """
@@ -744,18 +794,21 @@ calculateDS for all domains:
 # # Write the dictionary to a CSV file
 # csv_file_path = 'fgroup2DS_bacteria_recovered.csv'
 # dict2csv(DS_bacteria_dict, csv_file_path)
+
+# # eukaryotes
+# DS_eukaryotes_dict = calculateDSnoPhyla('matrix_eukaryotes_recovered.csv')
 #
-# # csv to dict
-# fgroup2DS_bacteria = csv2dict('fgroup2DS_bacteria_recovered.csv')
-# print(len(fgroup2DS_bacteria))
+# # Write the dictionary to a CSV file
+# csv_file_path = 'fgroup2DS_eukaryotes_recovered.csv'
+# dict2csv(DS_eukaryotes_dict, csv_file_path)
 
 
 """
 F –> X-groups
-"""
 
-# Create f_to_x = {domain.f_name: ['X-group']} from ecod.develop279.domains.txt
-# record "ambiguous" case of 1 F-group mapping to 2+ X-groups
+Create f_to_x = {domain.f_name: ['X-group']} from ecod.develop279.domains.txt
+record "ambiguous" case of 1 F-group mapping to 2+ X-groups
+"""
 
 # with open('data/ecod.develop279.domains.txt', 'r') as file:
 #     output = file.readlines()
@@ -788,7 +841,8 @@ F –> X-groups
 
 """
 Check cases where f_name contains a comma (e.g., DALR_1,tRNA-synt_1d)
-Create same = {'f_name1,f_name2' = [x1, x2]} where x1 = x2
+Create 'same' from 'f_to_x'
+where same = {'f_name1,f_name2' = [x1, x2]} with x1 = x2
 """
 #
 # with open('data/ecod.develop279.domains.txt', 'r') as file:
@@ -819,8 +873,8 @@ Create same = {'f_name1,f_name2' = [x1, x2]} where x1 = x2
 #         new = [xpair[0], *last_two]  # unlist using *
 #         xpairs.append(new)
 # print(xpairs)
-#
-# find their X-group integer code to see if they're the same or not
+# #
+# # find their X-group integer code to see if they're the same or not
 # xpairs_int = {}
 # for pair in xpairs:
 #     integers = []
@@ -835,7 +889,7 @@ Create same = {'f_name1,f_name2' = [x1, x2]} where x1 = x2
 #                     integers.append(f_to_x[key][0])
 #                     print(key)
 #                     break  # only need one
-#     # remove anything with 'ambiguous'
+#     # check it's not 'ambiguous'
 #     if 'a' not in integers:
 #         if len(integers) == 3:
 #             xpairs_int[pair[0] + ',' + pair[1] + ',' + pair[2]] = integers
@@ -854,7 +908,7 @@ Create same = {'f_name1,f_name2' = [x1, x2]} where x1 = x2
 #         if domains[0] == domains[1] == domains[2]:
 #             same[xpair] = domains
 #             print(domains)
-
+#
 #
 # print(len(same))  # 87
 # print(same)
@@ -876,6 +930,9 @@ Finally, map FtoX and save a new matrix as csv
 
 # # bacteria
 # mapFtoXMatrix('matrix_bacteria_recovered.csv', f_to_x, same)
+
+# eukaryotes
+# mapFtoXMatrix('matrix_eukaryotes_recovered.csv', f_to_x, same)
 
 
 """
@@ -900,22 +957,48 @@ calculateDS for X-groups!
 # dict2csv(x_DS_bacteria_dict, csv_file_path)
 
 
-# combine archaea + bacteria
+# # eukaryotes
+# x_DS_eukaryotes_dict = calculateDSnoPhyla('xgroup_matrix_eukaryotes_recovered.csv')
+#
+# # Write the dictionary to a CSV file
+# csv_file_path = 'xgroup2DS_eukaryotes_recovered.csv'
+# dict2csv(x_DS_eukaryotes_dict, csv_file_path)
+
+
+"""
+Combine (ArcBac, ArcBacEuk)
+"""
+
+# # combine archaea + bacteria
+# x_DS_archaea_dict = csv2dict('xgroup2DS_archaea_recovered.csv')
+# x_DS_bacteria_dict = csv2dict('xgroup2DS_bacteria_recovered.csv')
+# x_DS_combined_dict = {}
+# x_DS_shared_dict = {}
+# #
+# for xgroup in x_DS_archaea_dict:
+#     # populate shared dictionary
+#     x_DS_shared_dict[xgroup] = [x_DS_combined_dict[xgroup][0], x_DS_archaea_dict[xgroup][0]]
+#
+#     # populate combined dictionary
+#     average_ds = (float(x_DS_bacteria_dict[xgroup][0]) + float(x_DS_archaea_dict[xgroup][0]))/2
+#     x_DS_combined_dict[xgroup] = [average_ds]
+#
+# dict2csv(x_DS_shared_dict, 'xgroup2DS_shared_recovered.csv')
+# dict2csv(x_DS_combined_dict, 'xgroup2DS_combined_recovered.csv')
+
+
+# # combine archaea + bacteria + eukaryotes
 x_DS_archaea_dict = csv2dict('xgroup2DS_archaea_recovered.csv')
-x_DS_combined_dict = csv2dict('xgroup2DS_bacteria_recovered.csv')
-x_DS_shared_dict = {}
+x_DS_eukaryotes_dict = csv2dict('xgroup2DS_eukaryotes_recovered.csv')
+x_DS_bacteria_dict = csv2dict('xgroup2DS_bacteria_recovered.csv')
+x_DS_combined_dict = {}
 
-for key in x_DS_archaea_dict:
-    if key not in x_DS_combined_dict:  # archaea xgroup not in bacteria
-        x_DS_combined_dict[key] = x_DS_archaea_dict[key]
-    else:  # shared xgroup
-        x_DS_shared_dict[key] = [x_DS_combined_dict[key][0], x_DS_archaea_dict[key][0]]
-        new = (float(x_DS_combined_dict[key][0]) + float(x_DS_archaea_dict[key][0]))/2
-        x_DS_combined_dict[key] = [new]
+for xgroup in x_DS_archaea_dict:  # all have the same size: 2230 xgroups
+    # populate combined dictionary
+    average_ds = (float(x_DS_bacteria_dict[xgroup][0]) + float(x_DS_archaea_dict[xgroup][0]) + float(x_DS_eukaryotes_dict[xgroup][0]))/3
+    x_DS_combined_dict[xgroup] = [average_ds]
 
-dict2csv(x_DS_shared_dict, 'xgroup2DS_shared_recovered.csv')
-dict2csv(x_DS_combined_dict, 'xgroup2DS_combined_recovered.csv')
-
+dict2csv(x_DS_combined_dict, 'xgroup2DS_ArcbacEuk_recovered.csv')
 
 """
 Scaling law for each domain:
