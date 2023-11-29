@@ -604,10 +604,10 @@ DS score
 ========================================================
 """
 # Work with archaea:
-taxonomy_path = 'gtdb/ar53_taxonomy.tsv'
+# taxonomy_path = 'gtdb/ar53_taxonomy.tsv'
 
 # Work with bacteria:
-# taxonomy_path = 'gtdb/bac120_taxonomy.tsv'
+taxonomy_path = 'gtdb/bac120_taxonomy.tsv'
 
 phylum_genomes = {}
 with open(taxonomy_path, 'r') as file:
@@ -654,6 +654,8 @@ with open(taxonomy_path, 'r') as file:
 Check the sizes of our "reference genomes"
 """
 
+# change taxonomy path accordingly!!!
+
 # # archaea phylum sizes
 # my_phylum_sizes = countPhylumSizesMatrix('matrix_archaea_fast.csv')
 # print(my_phylum_sizes)
@@ -666,7 +668,7 @@ Check the sizes of our "reference genomes"
 # print(my_phylum_sizes)
 # print(sum(my_phylum_sizes))
 # [17350, 4216, 7328, 8242, 550, 695, 8588, 1325, 171, 1372, 395, 873, 96, 144, 939, 1387, 2485, 5, 49, 314, 131, 186, 323, 393, 8, 132, 237, 83, 189, 60, 60, 40, 1071, 81, 236, 139, 72, 7, 1, 224, 35, 10, 282, 37, 120, 88, 26, 33, 11, 76, 47, 54, 77, 65, 26, 76, 37, 104, 2, 7, 61, 15, 66, 21, 6, 46, 36, 34, 7, 3, 5, 9, 3, 42, 30, 5, 7, 18, 13, 11, 4, 4, 21, 17, 31, 5, 18, 22, 17, 9, 19, 13, 3, 19, 21, 5, 2, 16, 1, 5, 2, 1, 3, 6, 2, 4, 3, 1, 1, 8, 5, 2, 6, 2, 2, 3, 9, 2, 8, 2, 5, 7, 2, 2, 1, 6, 3, 8, 1, 2, 2, 2, 1, 11, 4, 4, 1, 3, 1, 3, 1, 2, 1, 2, 2, 3, 2, 3, 1, 3, 1, 2, 2, 1, 2, 1, 1, 1, 2, 5, 1, 1, 2, 2, 1, 1, 1, 1, 1]
-# 62290
+# 62291
 
 """
 Create a big matrix
@@ -696,7 +698,7 @@ Create a big matrix
 Recover the lost F/Xgroups
 """
 # # use HMM profiles from ECOD
-# with open('/Users/tseamuscorlett/Desktop/LongoLab/Fold_Gated/protein_properties/data/ecodf.hmm') as file:
+# with open('data/ecodf.hmm') as file:
 #     db_lines = file.readlines()
 #
 # profile_names = {}
@@ -717,6 +719,9 @@ Recover the lost F/Xgroups
 # print(len(a), len(b), len(c))  # 12318 3412 3412
 #  '"SAM_Arap1', '2', '3_like"' must be reconciled s.t. len(a) = 12316
 # my solution: edit the .csv directly => 'SAM_Arap1_2_3_like'
+#
+# d, e, f = parseMatrix('matrix_bacteria_recovered.csv')
+# print(len(d), len(e), len(f))  # 12316 62291 62291
 
 
 """
@@ -734,14 +739,14 @@ calculateDS for all domains:
 
 # # bacteria
 # my_phylum_sizes = [17350, 4216, 7328, 8242, 550, 695, 8588, 1325, 171, 1372, 395, 873, 96, 144, 939, 1387, 2485, 5, 49, 314, 131, 186, 323, 393, 8, 132, 237, 83, 189, 60, 60, 40, 1071, 81, 236, 139, 72, 7, 1, 224, 35, 10, 282, 37, 120, 88, 26, 33, 11, 76, 47, 54, 77, 65, 26, 76, 37, 104, 2, 7, 61, 15, 66, 21, 6, 46, 36, 34, 7, 3, 5, 9, 3, 42, 30, 5, 7, 18, 13, 11, 4, 4, 21, 17, 31, 5, 18, 22, 17, 9, 19, 13, 3, 19, 21, 5, 2, 16, 1, 5, 2, 1, 3, 6, 2, 4, 3, 1, 1, 8, 5, 2, 6, 2, 2, 3, 9, 2, 8, 2, 5, 7, 2, 2, 1, 6, 3, 8, 1, 2, 2, 2, 1, 11, 4, 4, 1, 3, 1, 3, 1, 2, 1, 2, 2, 3, 2, 3, 1, 3, 1, 2, 2, 1, 2, 1, 1, 1, 2, 5, 1, 1, 2, 2, 1, 1, 1, 1, 1]
-# DS_bacteria_dict = calculateDSMatrix('bacteria_recovered.csv', phylum_genomes, my_phylum_sizes)
+# DS_bacteria_dict = calculateDSMatrix('matrix_bacteria_recovered.csv', phylum_genomes, my_phylum_sizes)
 #
 # # Write the dictionary to a CSV file
-# csv_file_path = 'fgroup2DS_bacteria_rec.csv'
+# csv_file_path = 'fgroup2DS_bacteria_recovered.csv'
 # dict2csv(DS_bacteria_dict, csv_file_path)
 #
 # # csv to dict
-# fgroup2DS_bacteria = csv2dict('fgroup2DS_bacteria_rec.csv')
+# fgroup2DS_bacteria = csv2dict('fgroup2DS_bacteria_recovered.csv')
 # print(len(fgroup2DS_bacteria))
 
 
@@ -869,7 +874,7 @@ Finally, map FtoX and save a new matrix as csv
 # # archaea
 # mapFtoXMatrix('matrix_archaea_recovered.csv', f_to_x, same)
 
-# bacteria
+# # bacteria
 # mapFtoXMatrix('matrix_bacteria_recovered.csv', f_to_x, same)
 
 
@@ -895,21 +900,21 @@ calculateDS for X-groups!
 # dict2csv(x_DS_bacteria_dict, csv_file_path)
 
 
-# # combine archaea + bacteria
-# x_DS_archaea_dict = csv2dict('xgroup2DS_archaea_recovered.csv')
-# x_DS_combined_dict = csv2dict('xgroup2DS_bacteria_recovered.csv')
-# x_DS_shared_dict = {}
-#
-# for key in x_DS_archaea_dict:
-#     if key not in x_DS_combined_dict:  # archaea xgroup not in bacteria
-#         x_DS_combined_dict[key] = x_DS_archaea_dict[key]
-#     else:  # shared xgroup
-#         x_DS_shared_dict[key] = [x_DS_combined_dict[key][0], x_DS_archaea_dict[key][0]]
-#         new = (float(x_DS_combined_dict[key][0]) + float(x_DS_archaea_dict[key][0]))/2
-#         x_DS_combined_dict[key] = [new]
-#
-# dict2csv(x_DS_shared_dict, 'xgroup2DS_shared_recovered.csv')
-# dict2csv(x_DS_combined_dict, 'xgroup2DS_combined_recovered.csv')
+# combine archaea + bacteria
+x_DS_archaea_dict = csv2dict('xgroup2DS_archaea_recovered.csv')
+x_DS_combined_dict = csv2dict('xgroup2DS_bacteria_recovered.csv')
+x_DS_shared_dict = {}
+
+for key in x_DS_archaea_dict:
+    if key not in x_DS_combined_dict:  # archaea xgroup not in bacteria
+        x_DS_combined_dict[key] = x_DS_archaea_dict[key]
+    else:  # shared xgroup
+        x_DS_shared_dict[key] = [x_DS_combined_dict[key][0], x_DS_archaea_dict[key][0]]
+        new = (float(x_DS_combined_dict[key][0]) + float(x_DS_archaea_dict[key][0]))/2
+        x_DS_combined_dict[key] = [new]
+
+dict2csv(x_DS_shared_dict, 'xgroup2DS_shared_recovered.csv')
+dict2csv(x_DS_combined_dict, 'xgroup2DS_combined_recovered.csv')
 
 
 """
