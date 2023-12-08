@@ -435,6 +435,48 @@ def calculateDSnoPhyla(file_path):
     return domainDS_dict
 
 
+def calculateDSaverage(file_path, phyla, phylum_sizes=None):
+    """
+    Returns a dictionary of F/X-groups (str) : distribution_score (int) where DS is calculated as:
+    1) calculate DS within each phylum
+    2) take average of DS across all phyla
+
+    Requires a file_path of .csv file from which a MATRIX (list of lists) is made
+    where 1st row is the genomes, 2nd row is the domain_names, and the rest are the
+    domain frequencies.
+
+    Use custom list of phylum_sizes in case MATRIX does not contain all genomes in phyla
+    """
+
+    domains_dict, genomes_dict, output = parseMatrix(file_path)
+
+    domainDS_dict = {}
+    for domain in domains_dict:
+        dom_index = domains_dict[domain]
+        phylumDS = []
+        counter = 0
+        for phylum, genomes in phyla.items():
+            genome_hit = 0
+
+            # search all genomes within phylum
+            for genome in genomes:
+                if genome in genomes_dict.keys():
+                    gen_index = genomes_dict[genome]
+                    if int(output[gen_index][dom_index]) > 0:
+                        genome_hit += 1
+
+            # phylum DS
+            if phylum_sizes is None:  # no custom phylum_sizes
+                phylumDS.append(genome_hit / len(phylum_genomes[phylum]))
+            else:  # with custom phylum_sizes
+                phylumDS.append(genome_hit / phylum_sizes[counter])
+                counter += 1
+
+        # average across all phyla
+        domainDS_dict[domain] = [sum(phylumDS) / len(phylumDS)]
+    return domainDS_dict
+
+
 def countDomains(file_path, domains):
     """
     Updates and returns the given dict 'domains' by adding all domains found in
@@ -1020,6 +1062,27 @@ Try calculateDSnoPhyla for archaea and bacteria
 
 
 """
+Try calculateDSaverage for archaea and bacteria
+"""
+
+# # archaea
+# my_phylum_sizes = [768, 696, 172, 543, 32, 577, 1, 112, 92, 24, 176, 82, 58, 5, 16, 16, 14, 13, 6, 9]
+# x_DS_archaea_dict = calculateDSaverage('xgroup_matrix_archaea_recovered.csv', phylum_genomes, my_phylum_sizes)
+#
+# # Write the dictionary to a CSV file
+# csv_file_path = 'xgroup2DS_average_archaea_recovered.csv'
+# dict2csv(x_DS_archaea_dict, csv_file_path)
+#
+# bacteria
+my_phylum_sizes = [17350, 4216, 7328, 8242, 550, 695, 8588, 1325, 171, 1372, 395, 873, 96, 144, 939, 1387, 2485, 5, 49, 314, 131, 186, 323, 393, 8, 132, 237, 83, 189, 60, 60, 40, 1071, 81, 236, 139, 72, 7, 1, 224, 35, 10, 282, 37, 120, 88, 26, 33, 11, 76, 47, 54, 77, 65, 26, 76, 37, 104, 2, 7, 61, 15, 66, 21, 6, 46, 36, 34, 7, 3, 5, 9, 3, 42, 30, 5, 7, 18, 13, 11, 4, 4, 21, 17, 31, 5, 18, 22, 17, 9, 19, 13, 3, 19, 21, 5, 2, 16, 1, 5, 2, 1, 3, 6, 2, 4, 3, 1, 1, 8, 5, 2, 6, 2, 2, 3, 9, 2, 8, 2, 5, 7, 2, 2, 1, 6, 3, 8, 1, 2, 2, 2, 1, 11, 4, 4, 1, 3, 1, 3, 1, 2, 1, 2, 2, 3, 2, 3, 1, 3, 1, 2, 2, 1, 2, 1, 1, 1, 2, 5, 1, 1, 2, 2, 1, 1, 1, 1, 1]
+x_DS_bacteria_dict = calculateDSaverage('xgroup_matrix_bacteria_recovered.csv', phylum_genomes, my_phylum_sizes)
+
+# Write the dictionary to a CSV file
+csv_file_path = 'xgroup2DS_average_bacteria_recovered.csv'
+dict2csv(x_DS_bacteria_dict, csv_file_path)
+
+
+"""
 noPhyla Combine (ArcBac, ArcBacEuk)
 """
 
@@ -1036,18 +1099,18 @@ noPhyla Combine (ArcBac, ArcBacEuk)
 # dict2csv(x_DS_combined_dict, 'xgroup2DS_noPhyla_ArcBac_recovered.csv')
 
 
-# combine archaea + bacteria + eukaryotes
-x_DS_archaea_dict = csv2dict('xgroup2DS_noPhyla_archaea_recovered.csv')
-x_DS_bacteria_dict = csv2dict('xgroup2DS_noPhyla_bacteria_recovered.csv')
-x_DS_eukaryotes_dict = csv2dict('xgroup2DS_eukaryotes_recovered.csv')
-x_DS_combined_dict = {}
-
-for xgroup in x_DS_archaea_dict:  # all have the same size: 2230 xgroups
-    # populate combined dictionary
-    average_ds = (float(x_DS_bacteria_dict[xgroup][0]) + float(x_DS_archaea_dict[xgroup][0]) + float(x_DS_eukaryotes_dict[xgroup][0]))/3
-    x_DS_combined_dict[xgroup] = [average_ds]
-
-dict2csv(x_DS_combined_dict, 'xgroup2DS_noPhyla_ArcBacEuk_recovered.csv')
+# # combine archaea + bacteria + eukaryotes
+# x_DS_archaea_dict = csv2dict('xgroup2DS_noPhyla_archaea_recovered.csv')
+# x_DS_bacteria_dict = csv2dict('xgroup2DS_noPhyla_bacteria_recovered.csv')
+# x_DS_eukaryotes_dict = csv2dict('xgroup2DS_eukaryotes_recovered.csv')
+# x_DS_combined_dict = {}
+#
+# for xgroup in x_DS_archaea_dict:  # all have the same size: 2230 xgroups
+#     # populate combined dictionary
+#     average_ds = (float(x_DS_bacteria_dict[xgroup][0]) + float(x_DS_archaea_dict[xgroup][0]) + float(x_DS_eukaryotes_dict[xgroup][0]))/3
+#     x_DS_combined_dict[xgroup] = [average_ds]
+#
+# dict2csv(x_DS_combined_dict, 'xgroup2DS_noPhyla_ArcBacEuk_recovered.csv')
 
 
 """
