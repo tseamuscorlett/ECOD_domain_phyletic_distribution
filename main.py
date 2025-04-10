@@ -1,13 +1,9 @@
-# Import Packages First
+# Import Packages
 import csv
-import math
 import os
-import scipy
-import matplotlib.pyplot as plt
-import itertools
-import pandas as pd
 import re
 import portion as P
+import matplotlib.pyplot as plt
 
 if __name__ == '__main__':
     file_path = 'data/GB_GCA_000008085.1_protein.faa'
@@ -22,7 +18,7 @@ class EcodDomain:
         self.f_id = ecod_line.split('\t')[3]
         self.pdb = ecod_line.split('\t')[4]
         self.chain = ecod_line.split('\t')[5]
-        self.pdb_range = self.parse_ecod_range(ecod_line.split('\t')[6])
+        self.pdb_range = ecod_line.split('\t')[6]
         self.seqid_range = ecod_line.split('\t')[7]
         self.arch_name = ecod_line.split('\t')[9]
         self.x_name = ecod_line.split('\t')[10]
@@ -63,19 +59,6 @@ class EcodDomain:
             return True
         else:
             return False
-
-    def structure_path(self):
-        """
-        Return path to structure in ECOD structure F99 database.
-        Does not check if structure Exists.
-        """
-        return f""
-        # TODO: what is this?
-
-    def parse_ecod_range(self, ecod_range):
-        """Parse ECOD range."""
-        pass
-        # TODO: (8) create parse_ecod_range
 
     def pymol_selector(self):
         """Return PyMOL selection command for domain."""
@@ -327,7 +310,7 @@ def populateMatrixFast(file_path, matrix):
 
     # extract genome name and add to matrix[0] 'dict of genomes'
 
-    # archaea & bacteria patterns from gtdb (e.g. GB_GCA_000008085.1)
+    # archaea & bacteria patterns from genome_data (e.g. GB_GCA_000008085.1)
     # pattern = '[A-Z]{2}_[A-Z]{3}_\d+\.\d+'
 
     # eukaryotes pattern from Eukprot (e.g. EP00001_Diaphorina_citri)
@@ -407,6 +390,54 @@ def calculateDSMatrix(file_path, phyla, phylum_sizes=None):
     return domainDS_dict
 
 
+def calculateDSMatrixComposition(file_path, phyla, domain_compositions, phylum_sizes=None):
+    """
+    Returns a dictionary of compositions of F/X-groups (str) : distribution_score (int)  within
+    the phyla {phylum: [genomes]}, where DS = fraction of phyla for which 50% of
+    the genomes in that phylum have the given domain composition.
+
+    Requires a file_path of .csv file from which a MATRIX (list of lists) is made
+    where 1st row is the genomes, 2nd row is the domain_names, and the rest are the
+    domain frequencies.
+
+    Use custom list of phylum_sizes in case MATRIX does not contain all genomes in phyla
+    """
+
+    domains_dict, genomes_dict, output = parseMatrix(file_path)
+
+    compositionDS_dict = {}
+
+    for composition in domain_compositions:
+        phylum_hit = 0
+        counter = 0
+
+        for phylum, genomes in phyla.items():
+            genome_hit = 0
+
+            # search all genomes within phylum
+            for genome in genomes:
+                if genome in genomes_dict.keys():
+                    gen_index = genomes_dict[genome]
+
+                    # Check if all domains in the composition are present in the genome
+                    if all(int(output[gen_index][domains_dict[dom]]) > 0 for dom in composition):
+                        genome_hit += 1
+
+            # Does >50% of genomes in this phylum contain the domain composition?
+            if phylum_sizes is None:  # no custom phylum_sizes
+                if (genome_hit / len(genomes)) >= 0.5:
+                    phylum_hit += 1
+            else:  # with custom phylum_sizes
+                if (genome_hit / phylum_sizes[counter]) >= 0.5:
+                    phylum_hit += 1
+                counter += 1
+
+        # Store the distribution score for the composition
+        compositionDS_dict[frozenset(composition)] = phylum_hit / len(phyla)
+
+    return compositionDS_dict
+
+
 def calculateDSnoPhyla(file_path):
     """
     Returns a dictionary of F/X-groups (str) : distribution_score (int)
@@ -431,6 +462,34 @@ def calculateDSnoPhyla(file_path):
 
         domainDS_dict[domain] = [genome_hit / len(genomes_dict)]
     return domainDS_dict
+
+def calculateDSnoPhylaComposition(file_path, domain_compositions):
+    """
+    Returns a dictionary of F/X-groups (str) : distribution_score (int)
+    where DS = fraction of genomes with the given domain (no consideration of phyla)
+
+    Requires a file_path of .csv file from which a MATRIX (list of lists) is made
+    where 1st row is the genomes, 2nd row is the domain_names, and the rest are the
+    domain frequencies.
+    """
+
+    domains_dict, genomes_dict, output = parseMatrix(file_path)
+    compositionDS_dict = {}
+
+    for composition in domain_compositions:
+        genome_hit = 0
+
+        for genome in genomes_dict:
+            gen_index = genomes_dict[genome]
+
+            # Check if all domains in the composition are present in the genome
+            if all(int(output[gen_index][domains_dict[dom]]) > 0 for dom in composition):
+                genome_hit += 1
+
+        # Calculate the fraction of genomes containing the domain composition
+        compositionDS_dict[frozenset(composition)] = genome_hit / len(genomes_dict)
+
+    return compositionDS_dict
 
 
 def calculateDSaverage(file_path, phyla, phylum_sizes=None):
@@ -619,14 +678,17 @@ def dict2csv(dict, csv_file_path):
     with open(csv_file_path, 'w', newline='') as csv_file:
         csv_writer = csv.writer(csv_file)
 
-        # Write the header
-        csv_writer.writerow(dict.keys())
+        for key, value in dict.items():
+            csv_writer.writerow([key] + [value])
 
-        # Write the data
-        try:
-            csv_writer.writerows(zip(*dict.values()))
-        except:
-            csv_writer.writerows(dict.values())
+        # # Write the header
+        # csv_writer.writerow(dict.keys())
+        #
+        # # Write the data
+        # try:
+        #     csv_writer.writerows(zip(*dict.values()))
+        # except:
+        #     csv_writer.writerows(dict.values())
 
 def csv2dict(csv_file_path):
     with open(csv_file_path, 'r') as csv_file:
@@ -676,9 +738,9 @@ def recoverFgroup(file_path, hmm_profiles):
 """
 How many domains in reference genomes?
 """
-# data_path = 'gtdb/archaea'
-# data_path = 'gtdb/bacteria'
-# data_path = 'gtdb/eukaryotes'
+# data_path = 'genome_data/archaea'
+# data_path = 'genome_data/bacteria'
+# data_path = 'genome_data/eukaryotes'
 
 # domains = {}
 # for file_name in os.listdir(data_path):
@@ -694,17 +756,16 @@ DS score
 ========================================================
 """
 # Work with archaea:
-# taxonomy_path = 'gtdb/ar53_taxonomy.tsv'
+# taxonomy_path = 'genome_data/ar53_taxonomy.tsv'
 
 # Work with bacteria:
-taxonomy_path = 'gtdb/bac120_taxonomy.tsv'
+taxonomy_path = 'genome_data/bac120_taxonomy.tsv'
 
 phylum_genomes = {}
 with open(taxonomy_path, 'r') as file:
     output = file.readlines()
 
     for line in output:
-        # Split the line into parts using tab ('\t') as the delimiter
         parts = line.split('\t')
         if len(parts) >= 2:
             # Extract the desired parts from the split line
@@ -724,35 +785,35 @@ with open(taxonomy_path, 'r') as file:
 # phyla = list(phylum_genomes.keys())
 # # print(phyla)
 # print(len(phyla))  # 20 archaea, 169 bacteria
-
-
-# how many genomes?
+#
+#
+# # how many genomes?
 # phylum_sizes = []
 # for phylum, genomes in phylum_genomes.items():
 #     phylum_sizes.append(len(genomes))
-
+#
 # print(phylum_sizes)
-# archaea: [1429, 1220, 458, 1192, 62, 850, "11", 131, 137, 46, 229, 124, 77, "10", 20, 19, 16, 16, 6, 9]
-# bacteria: [141114, 61795, 28532, 21744, 6845, 2331, 20893, 2848, 612, 2818, 1230, 1472, 412, 295, 1503, 2214, 4645, 31, 101, 492, 208, 496, 499, 627, 42, 276, 456, 228, 313, 109, 120, 122, 1602, 147, 404, 244, 116, 22, 10, 325, 63, 21, 414, 79, 223, 171, 54, 54, 21, 119, 62, 102, 105, 92, 53, 107, 54, 161, 7, 12, 82, 24, 92, 32, 11, 77, 50, 52, 16, 10, 12, 14, 7, 55, 50, 10, 15, 25, 20, 14, 8, 8, 29, 25, 38, 7, 27, 27, 22, 11, 23, 15, 5, 25, 27, 8, 4, 17, 2, 6, 3, 2, 4, 7, 4, 5, 4, 2, 2, 10, 6, 3, 7, 3, 4, 4, 10, 3, 8, 2, 5, 7, 2, 2, 1, 6, 3, 8, 1, 2, 2, 2, 1, 11, 4, 4, 1, 3, 1, 3, 1, 2, 1, 2, 2, 3, 2, 3, 1, 3, 1, 2, 2, 1, 2, 1, 1, 1, 2, 5, 1, 1, 2, 2, 1, 1, 1, 1, 1]
-
+# # archaea: [1429, 1220, 458, 1192, 62, 850, "11", 131, 137, 46, 229, 124, 77, "10", 20, 19, 16, 16, 6, 9]
+# # bacteria: [141114, 61795, 28532, 21744, 6845, 2331, 20893, 2848, 612, 2818, 1230, 1472, 412, 295, 1503, 2214, 4645, 31, 101, 492, 208, 496, 499, 627, 42, 276, 456, 228, 313, 109, 120, 122, 1602, 147, 404, 244, 116, 22, 10, 325, 63, 21, 414, 79, 223, 171, 54, 54, 21, 119, 62, 102, 105, 92, 53, 107, 54, 161, 7, 12, 82, 24, 92, 32, 11, 77, 50, 52, 16, 10, 12, 14, 7, 55, 50, 10, 15, 25, 20, 14, 8, 8, 29, 25, 38, 7, 27, 27, 22, 11, 23, 15, 5, 25, 27, 8, 4, 17, 2, 6, 3, 2, 4, 7, 4, 5, 4, 2, 2, 10, 6, 3, 7, 3, 4, 4, 10, 3, 8, 2, 5, 7, 2, 2, 1, 6, 3, 8, 1, 2, 2, 2, 1, 11, 4, 4, 1, 3, 1, 3, 1, 2, 1, 2, 2, 3, 2, 3, 1, 3, 1, 2, 2, 1, 2, 1, 1, 1, 2, 5, 1, 1, 2, 2, 1, 1, 1, 1, 1]
+#
 # print(sum(phylum_sizes))
-# 6062 for archaea
-# 311480 for bacteria
+# # 6062 for archaea
+# # 311480 for bacteria
 
 
 """
 Create a big matrix
 """
-# data_path = 'gtdb/archaea'
-# data_path = 'gtdb/bacteria'
-# data_path = 'gtdb/eukaryotes'
+# data_path = 'genome_data/archaea'
+# data_path = 'genome_data/bacteria'
+# data_path = 'genome_data/eukaryotes'
 
 # matrix = [{}, {}]
 #
 # # Iterate through the 'data' directory and process each .faa file
 # for file_name in os.listdir(data_path):
-#     faa_path = os.path.join(data_path, file_name)
-#     matrix = populateMatrixFast(faa_path, matrix)
+    # faa_path = os.path.join(data_path, file_name)
+    # matrix = populateMatrixFast(faa_path, matrix)
 #
 # # # save matrix as csv
 # # csv_file = "matrix_archaea_fast.csv"
@@ -1011,6 +1072,122 @@ calculateDS for X-groups!
 
 
 """
+(calculateDS of combinations of X-groups)
+"""
+domain_compositions = {frozenset({'2002', '213'}),
+ frozenset({'2002', '244'}),
+ frozenset({'2002', '232'}),
+ frozenset({'101', '2002'}),
+ frozenset({'1', '2002', '2003'}),
+ frozenset({'2002', '296'}),
+ frozenset({'10', '2002', '306', '75'}),
+ frozenset({'2002', '2007'}),
+ frozenset({'103', '2002'}),
+ frozenset({'103', '2002', '2003', '206', '325', '3794'}),
+ frozenset({'2002', '2005'}),
+ frozenset({'11', '2002'}),
+ frozenset({'11', '2002', '525', '65'}),
+ frozenset({'11', '2002', '221'}),
+ frozenset({'101', '2002', '503', '7524'}),
+ frozenset({'2002', '2003', '236'}),
+ frozenset({'12', '2002', '2007'}),
+ frozenset({'2002', '222', '304', '3321', '3323', '7581'}),
+ frozenset({'10', '12', '2002'}),
+ frozenset({'2002', '207', '210'}),
+ frozenset({'103', '2002', '2486', '325'}),
+ frozenset({'10', '108', '12', '2002', '4178'}),
+ frozenset({'2002', '2487'}),
+ frozenset({'2002', '325', '375'}),
+ frozenset({'2002', '2007', '4995'}),
+ frozenset({'2002', '2007', '258', '4995'}),
+ frozenset({'2002', '2007', '3269', '872'}),
+ frozenset({'10', '2002', '881'}),
+ frozenset({'2002', '206', '2487'}),
+ frozenset({'1', '2002'}),
+ frozenset({'108', '11', '2002'}),
+ frozenset({'12', '2002'}),
+ frozenset({'2002', '64'}),
+ frozenset({'10', '11', '12', '2002'}),
+ frozenset({'2002', '3858', '4017', '4044', '4223', '4971', '7586', '7595'}),
+ frozenset({'12', '2002', '355', '4178'}),
+ frozenset({'2002', '65'}),
+ frozenset({'2002', '3858', '4017', '4223', '4971', '7595'}),
+ frozenset({'2002', '302', '304'}),
+ frozenset({'2002', '230', '304'}),
+ frozenset({'2002', '218'}),
+ frozenset({'2002', '623', '7521'}),
+ frozenset({'12', '2002', '206'}),
+ frozenset({'1', '2002', '275', '3016', '7577'}),
+ frozenset({'12', '2002', '632'}),
+ frozenset({'2002', '2484'}),
+ frozenset({'2002', '243'}),
+ frozenset({'2002', '212'}),
+ frozenset({'2002', '207', '210', '304'}),
+ frozenset({'1', '2002', '2004', '2493'}),
+ frozenset({'2002', '70'}),
+ frozenset({'2002', '304'}),
+ frozenset({'2002', '2004'}),
+ frozenset({'2002', '3016', '7577'}),
+ frozenset({'2002', '2004', '2007'}),
+ frozenset({'2002', '2003', '2004', '2007', '328', '4002'}),
+ frozenset({'108', '11', '2002', '220'}),
+ frozenset({'2002', '2003'}),
+ frozenset({'10', '11', '2002'}),
+ frozenset({'2002', '206'}),
+ frozenset({'2002', '325'}),
+ frozenset({'1', '2002', '205', '298', '3858'}),
+ frozenset({'2002', '2007', '2487'}),
+ frozenset({'187', '2002', '2003', '205'}),
+ frozenset({'10', '2002'}),
+ frozenset({'2002', '3858', '7595'}),
+ frozenset({'1', '2002', '275', '7577'}),
+ frozenset({'164', '2002'}),
+ frozenset({'2002', '7573'}),
+ frozenset({'103', '2002', '325'}),
+ frozenset({'109', '2002'}),
+ frozenset({'2002', '2492'}),
+ frozenset({'2002', '222', '304', '3321', '3322', '3323'}),
+ frozenset({'2002', '2003', '2007'}),
+ frozenset({'2002', '7574', '7579'}),
+ frozenset({'103', '2002', '330'}),
+ frozenset({'101', '2002', '2003', '2007', '206', '2487', '7543'}),
+ frozenset({'187', '2002', '2003'}),
+ frozenset({'187', '2002', '2003', '207', '210', '304'}),
+ frozenset({'2002', '7521'}),
+ frozenset({'11', '12', '2002'}),
+ frozenset({'2002', '2498'}),
+ frozenset({'2002', '3292'}),
+ frozenset({'1', '2002', '304', '7531'}),
+ frozenset({'11', '2002', '2007'}),
+ frozenset({'10', '12', '2002', '2007'})}
+
+# # archaea
+# my_phylum_sizes = [768, 696, 172, 543, 32, 577, 1, 112, 92, 24, 176, 82, 58, 5, 16, 16, 14, 13, 6, 9]
+# x_DS_archaea_dict = calculateDSMatrixComposition('xgroup_matrix_archaea_recovered.csv', phylum_genomes, domain_compositions, my_phylum_sizes)
+
+# # Write the dictionary to a CSV file
+# csv_file_path = 'composition2DS_archaea_recovered.csv'
+# dict2csv(x_DS_archaea_dict, csv_file_path)
+
+
+# # bacteria
+# my_phylum_sizes = [17350, 4216, 7328, 8242, 550, 695, 8588, 1325, 171, 1372, 395, 873, 96, 144, 939, 1387, 2485, 5, 49, 314, 131, 186, 323, 393, 8, 132, 237, 83, 189, 60, 60, 40, 1071, 81, 236, 139, 72, 7, 1, 224, 35, 10, 282, 37, 120, 88, 26, 33, 11, 76, 47, 54, 77, 65, 26, 76, 37, 104, 2, 7, 61, 15, 66, 21, 6, 46, 36, 34, 7, 3, 5, 9, 3, 42, 30, 5, 7, 18, 13, 11, 4, 4, 21, 17, 31, 5, 18, 22, 17, 9, 19, 13, 3, 19, 21, 5, 2, 16, 1, 5, 2, 1, 3, 6, 2, 4, 3, 1, 1, 8, 5, 2, 6, 2, 2, 3, 9, 2, 8, 2, 5, 7, 2, 2, 1, 6, 3, 8, 1, 2, 2, 2, 1, 11, 4, 4, 1, 3, 1, 3, 1, 2, 1, 2, 2, 3, 2, 3, 1, 3, 1, 2, 2, 1, 2, 1, 1, 1, 2, 5, 1, 1, 2, 2, 1, 1, 1, 1, 1]
+# x_DS_bacteria_dict = calculateDSMatrixComposition('xgroup_matrix_bacteria_recovered.csv', phylum_genomes, domain_compositions, my_phylum_sizes)
+#
+# # Write the dictionary to a CSV file
+# csv_file_path = 'composition2DS_bacteria_recovered.csv'
+# dict2csv(x_DS_bacteria_dict, csv_file_path)
+
+
+# eukaryotes
+x_DS_eukaryotes_dict = calculateDSnoPhylaComposition('xgroup_matrix_eukaryotes_recovered.csv', domain_compositions)
+
+# Write the dictionary to a CSV file
+csv_file_path = 'composition2DS_eukaryotes_recovered.csv'
+dict2csv(x_DS_eukaryotes_dict, csv_file_path)
+
+
+"""
 Combine (ArcBac, ArcBacEuk)
 """
 
@@ -1085,31 +1262,31 @@ Try calculateDSaverage for archaea and bacteria
 Combine (ArcBac, ArcBacEuk) using DS_average
 """
 
-# combine archaea + bacteria
-x_DS_archaea_dict = csv2dict('xgroup2DS_average_archaea_recovered.csv')
-x_DS_bacteria_dict = csv2dict('xgroup2DS_average_bacteria_recovered.csv')
-x_DS_combined_dict = {}
-
-for xgroup in x_DS_archaea_dict: # all have the same size: 2230 xgroups
-    # populate combined dictionary
-    average_ds = (float(x_DS_bacteria_dict[xgroup][0]) + float(x_DS_archaea_dict[xgroup][0]))/2
-    x_DS_combined_dict[xgroup] = [average_ds]
-
-dict2csv(x_DS_combined_dict, 'xgroup2DS_average_ArcBac_recovered.csv')
-
-
-# combine archaea + bacteria + eukaryotes
-x_DS_archaea_dict = csv2dict('xgroup2DS_average_archaea_recovered.csv')
-x_DS_bacteria_dict = csv2dict('xgroup2DS_average_bacteria_recovered.csv')
-x_DS_eukaryotes_dict = csv2dict('xgroup2DS_eukaryotes_recovered.csv')
-x_DS_combined_dict = {}
-
-for xgroup in x_DS_archaea_dict:  # all have the same size: 2230 xgroups
-    # populate combined dictionary
-    average_ds = (float(x_DS_bacteria_dict[xgroup][0]) + float(x_DS_archaea_dict[xgroup][0]) + float(x_DS_eukaryotes_dict[xgroup][0]))/3
-    x_DS_combined_dict[xgroup] = [average_ds]
-
-dict2csv(x_DS_combined_dict, 'xgroup2DS_average_ArcBacEuk_recovered.csv')
+# # combine archaea + bacteria
+# x_DS_archaea_dict = csv2dict('xgroup2DS_average_archaea_recovered.csv')
+# x_DS_bacteria_dict = csv2dict('xgroup2DS_average_bacteria_recovered.csv')
+# x_DS_combined_dict = {}
+#
+# for xgroup in x_DS_archaea_dict: # all have the same size: 2230 xgroups
+#     # populate combined dictionary
+#     average_ds = (float(x_DS_bacteria_dict[xgroup][0]) + float(x_DS_archaea_dict[xgroup][0]))/2
+#     x_DS_combined_dict[xgroup] = [average_ds]
+#
+# dict2csv(x_DS_combined_dict, 'xgroup2DS_average_ArcBac_recovered.csv')
+#
+#
+# # combine archaea + bacteria + eukaryotes
+# x_DS_archaea_dict = csv2dict('xgroup2DS_average_archaea_recovered.csv')
+# x_DS_bacteria_dict = csv2dict('xgroup2DS_average_bacteria_recovered.csv')
+# x_DS_eukaryotes_dict = csv2dict('xgroup2DS_eukaryotes_recovered.csv')
+# x_DS_combined_dict = {}
+#
+# for xgroup in x_DS_archaea_dict:  # all have the same size: 2230 xgroups
+#     # populate combined dictionary
+#     average_ds = (float(x_DS_bacteria_dict[xgroup][0]) + float(x_DS_archaea_dict[xgroup][0]) + float(x_DS_eukaryotes_dict[xgroup][0]))/3
+#     x_DS_combined_dict[xgroup] = [average_ds]
+#
+# dict2csv(x_DS_combined_dict, 'xgroup2DS_average_ArcBacEuk_recovered.csv')
 
 
 """
