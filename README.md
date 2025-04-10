@@ -1,4 +1,4 @@
-# protein_properties
+# ECOD_domain_phyletic_distribution
 
 'data' directory requires 'ecod.develop279.domains.txt' and 'ecodf.hmm' (ECOD v279).
 
